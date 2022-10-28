@@ -80,37 +80,6 @@ def get_data_dic(big_category_data,mid_category_data,small_category_data):
 
     return all_data,all_code
 
-'''
-def match_all_data(word,all_data):
-    word_sim_dic = {}
-    sim_dic = {}
-    if "节" in word or '术语' in word:
-        sort_sim_list=[]
-        return sort_sim_list
-    else:
-        for l in all_data:
-            for k in l.values():
-                for p in k:
-                    r = list(p.values())[0]
-                    if word == list(p.keys())[0]:
-                        for word_c in r:
-                            word_c1 = pro_catg_data(word_c)
-                            sim = jaccard_list(word, word_c1)
-                            sim= sim+1.0
-                            sim_dic[word_c] = sim
-                    else:
-                        for word_c in r:
-                            word_c2 = pro_catg_data(word_c)
-                            #sim = jaccard(word, word_c)
-                            sim = jaccard_list(word, word_c2)
-                            sim_dic[word_c] = sim
-        sort_sim_dic = sort_data(sim_dic)
-        word_sim_dic[word] = sort_sim_dic
-
-        sort_sim_list=list(sort_sim_dic.keys())
-
-        return sort_sim_list
-        '''
 def match_all_data(word,all_data,all_code):
     word_sim_dic = {}
     sim_dic = {}
