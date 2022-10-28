@@ -317,7 +317,7 @@ def get_last_data(new_data):
             jie_data["creatTime"] = now_time
 
         zhang_list.append(jie_data)
-    print(zhang_list)
+    #print(zhang_list)
     return zhang_list
 
 def get_result_data(zhang_list):
