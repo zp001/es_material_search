@@ -7,6 +7,9 @@ from elasticsearch import Elasticsearch
 es = Elasticsearch('http://localhost:9200')
 
 def segment_data(data):
+    """
+        物料名称编码三级分类
+            """
     big_category_data=[]
     mid_category_data=[]
     small_category_data=[]
@@ -21,6 +24,9 @@ def segment_data(data):
 
 
 def get_category_data(file):
+    """
+    读取物料excel,获取物料类别大中小类分类数据
+            """
     data = pd.read_excel(file, index_col=2,skiprows=2)
     data=data.loc[:, ['类别编码', '类别名称']].values
     data = data.tolist()
@@ -30,6 +36,9 @@ def get_category_data(file):
     return data,big_category_data,mid_category_data,small_category_data
 
 def get_data_dic(big_category_data,mid_category_data,small_category_data):
+    """
+    组织数据，大类包含的中类，中类下面包含所有的小类，{大类名称：{中类1：{小类1,小类2,...},中类2：{小类1,小类2...}}}
+                """
     mid_cat_data=[]
     mid_cat_code = []
     for m in mid_category_data:
@@ -158,6 +167,9 @@ def match_all_data(word,all_data,all_code):
         return mat_sort_sim_list,cod_sort_sim_list
 
 def edit_distance(word1, word2):
+    """
+            编辑距离算法
+                """
     len1 = len(word1)
     len2 = len(word2)
     dp = np.zeros((len1 + 1, len2 + 1))
@@ -174,6 +186,9 @@ def edit_distance(word1, word2):
     return dp[len1][len2]
 
 def simility(word1, word2):
+    """
+        利用编辑距离计算相似度
+                    """
     if word2 == word1:
         return 1.0
     res = edit_distance(word1, word2)
@@ -240,9 +255,15 @@ def jaccard_list(word1,word2):
     return sim
 
 def jaccard(word1,word2):
+    """
+            jaccard相似度算法
+                    """
     return len(set(word1).intersection(set(word2))) / len(set(word1).union(set(word2)))
 
 def jieba_seg_word(str):
+    """
+        分词
+     """
     seg_list = jieba.cut(str, cut_all=True)
     seg_list = list(seg_list)
     return seg_list
