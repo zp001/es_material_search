@@ -162,4 +162,33 @@ PUT material
   }
 '''
 
+'''
+POST /material/_search
+{
+  "size": 10,
+            "query": {
+                "bool": {
+                    "should": [
+                        {"match": {"section": "液压支架"}},
+                        {"match": {"content": "液压支架"}}
+                    ]
+                }
+            },
+            "sort": [{"versionNumber": {"order": "desc"}}],
+            "collapse": {
+                "field": "section.jie"
+            },
+  "highlight": {
+    "fields": {
+      "content": {}
+    },
+    "pre_tags": "<font color='red'>",
+    "post_tags": "</font>",
+    "number_of_fragments" : 3,
+    "fragment_size" : 150
+  }
+}
+'''
+
+
 
