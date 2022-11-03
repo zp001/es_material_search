@@ -87,10 +87,10 @@ PUT material
       "desc": {
         "type": "text"
       },
-      " source": {
+      "source": {
         "type": "text"
       },
-      " top": {
+      "top": {
         "type": "text"
       },
       "content": {
