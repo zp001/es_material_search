@@ -171,7 +171,7 @@ def get_material_catg():
     """
         得到物料名称和代码对应数据
         """
-    file = './/data//物料类别数据//物料类别.xls'
+    file = '..//material_data_process//get_result_data//data//物料类别数据//物料类别.xls'
     bms_all_data, big_category_data, mid_category_data, small_category_data = ed.get_category_data(file)
     bms_data, bms_code = ed.get_data_dic(big_category_data, mid_category_data, small_category_data)
     return bms_data,bms_code
@@ -378,7 +378,7 @@ def load_data2es(article_list):
             print("失败")
 
 if __name__ == "__main__":
-    path="D://work//data//example_data//第一章1//"
+    path="D://work//data//example_data//第一章2//"
     file_name=get_files(path)
     locations=process_flies(path,file_name)
     all_data_list,all_data_list_index=get_data_list(locations)
