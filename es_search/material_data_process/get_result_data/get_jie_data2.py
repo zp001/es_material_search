@@ -51,7 +51,7 @@ def get_files(path):
     file_name.sort(key=lambda x: int(x.split('.')[0]))
     return file_name
 
-def sort_files(files_list):
+def sort_files1(files_list):
     n=len(files_list)
     if n%2==0:
         for i in range(n//2):
@@ -63,6 +63,24 @@ def sort_files(files_list):
             del files_list[int(n//2)+i+2]
 
     return files_list
+
+def sort_files(files_list):
+    f=[]
+    n=len(files_list)
+    if n%2==1:
+        for i in range(int(n//2)+1):
+            if i!=int(n//2):
+                f.append(files_list[i])
+                f.append(files_list[i+int(n//2)+1])
+            else:
+                f.append(files_list[i])
+    else:
+        for i in range(int(n // 2)):
+            f.append(files_list[i])
+            f.append(files_list[i + int(n // 2)])
+
+    return f
+
 def clean_text(para:str):
     """
         数据清洗
@@ -139,7 +157,8 @@ def get_data_list(locations):
 
     all_data_list=[i for j in all_data_list for i in j]
     for i in range(len(all_data_list)):
-        if all_data_list[i].startswith('第'):
+        #if all_data_list[i].startswith('第'):
+        if re.match(r'^[第][一二三四五六七八九十—]+节',all_data_list[i]):
             all_data_list_index.append(i)
     return all_data_list,all_data_list_index
 
@@ -183,8 +202,11 @@ def get_small_title(con,section):
     title=[]
     combin_title=[]
     for d in con:
-        if re.match(r'^[一二三四五六七八九十—]+、', d):
-            s=d.split('、')[1]
+        #if re.match(r'^[一二三四五六七八九十—]+、', d):
+            #s = d.split('、')[1]
+        if re.match(r'^[一二三四五六七八九十—]', d):
+            #s=d.split('、')[1]
+            s=d[2:]
             if '引用' in s:
                 ind=s.index('引')
                 s=s[:ind-1]
