@@ -3,6 +3,7 @@ import datetime
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 import re
+from  material_data_process.get_result_data.select_paragraph import match_keyword,jieba_seg
 
 class Searchengine:
     def __init__(self):
@@ -16,20 +17,44 @@ class Searchengine:
         article_list = response["hits"]["hits"]
         return article_list
 
-    def judge_search(self,query_sec,query_title,query_content):
+    def judge_search(self,keywords,query_sec,query_title,query_content):
         sec_list=Searchengine.title_search(self, query_sec)
         if len(sec_list)==0:
             title_list = Searchengine.title_search(self, query_title)
-            title_list = Searchengine.get_new_article_list(self, title_list)
             if len(title_list)==0:
-                content_list = Searchengine.title_search(self, query_content)
-                content_list = Searchengine.get_new_article_list(self, content_list)
+                content_list1 = Searchengine.title_search(self, query_content)
+                content_list = Searchengine.get_new_article_list_cont(self, content_list1)
                 return content_list
-            return title_list
+            else:
+                title_list = Searchengine.get_new_article_list(self, title_list)
+                dic_path='..//material_data_process//get_result_data//data//字典//word_dic.txt'
+                seg=jieba_seg(keywords,dic_path)
+                key_sec=seg.split('/')[0]
+                title_re_cont = match_keyword(key_sec, title_list[0]['content'])
+                title_re_cont = Searchengine.highlight_data(self, title_re_cont)
+                title_list[0]['highlight_content'] = title_re_cont
+                return title_list
 
         else:
             sec_list=Searchengine.get_new_article_list(self,sec_list)
+            sec_re_cont = match_keyword(keywords, sec_list[0]['content'])
+            sec_re_cont=Searchengine.highlight_data(self,sec_re_cont)
+            sec_list[0]['highlight_content'] = sec_re_cont
             return sec_list
+
+    def process_highlight(self,start, end, s):
+        start = re.escape(start)
+        end = re.escape(end)
+        pattern = re.compile(r'%s(?:.|\s)*?%s' % (start, end))
+        updated = ''.join(re.split(pattern, s))
+        return updated
+
+    def highlight_data(self,highlight_content):
+        for i in range(len(highlight_content)):
+            updated=Searchengine.process_highlight(self, 'title', 'blank">', highlight_content[i])
+            del highlight_content[i]
+            highlight_content.insert(i,updated)
+        return highlight_content
 
     def search(self, keywords):
         query_sec={
@@ -62,7 +87,7 @@ class Searchengine:
 
         #boost设置字段权重
         query_content = {
-            "size": 20,
+            "size": 10,
             "query": {
                 "bool": {
                     "should": [
@@ -74,10 +99,19 @@ class Searchengine:
             "sort": [{"versionNumber": {'order': "desc"}}],
             "collapse": {
                 "field": "section.jie"
+            },
+            "highlight": {
+                "fields": {
+                    "content": {}
+                },
+                "pre_tags": "<font color='red'>",
+                "post_tags": "</font>",
+                "number_of_fragments": 3,
+                "fragment_size": 150
             }
         }
 
-        article_list=Searchengine.judge_search(self, query_sec,query_title,query_content)
+        article_list=Searchengine.judge_search(self,keywords, query_sec,query_title,query_content)
         return article_list
 
     def search_null(self):
@@ -188,7 +222,6 @@ class Searchengine:
             desc = cont['_source']['desc']
             source = cont['_source']['source']
             top = cont['_source']['top']
-
             creater = cont['_source']['creater']
 
             content=content.replace('\n','')
@@ -209,6 +242,52 @@ class Searchengine:
             d['source'] = source
             d['top'] = top
             d['creater'] = creater
+
+            new_article_list.append(d)
+        return new_article_list
+
+    def get_new_article_list_cont(self,article_list):
+        new_article_list = []
+        for cont in article_list:
+            d = {}
+            chapter = cont['_source']['chapter'].strip('\n')
+            section = cont['_source']['section'].strip('\n')
+            content = cont['_source']['content'].strip('\n')
+            quote = cont['_source']['quote'].strip('\n')
+            picture = cont['_source']['picture']
+            small_title=cont['_source']['small_title']
+            material_name = cont['_source']['material_name']
+            material_code = cont['_source']['material_code']
+            title = cont['_source']['title']
+            creatTime = cont['_source']['creatTime']
+            dataStatus = cont['_source']['dataStatus']
+            versionNumber = cont['_source']['versionNumber']
+            processStatus = cont['_source']['processStatus']
+            desc = cont['_source']['desc']
+            source = cont['_source']['source']
+            top = cont['_source']['top']
+            creater = cont['_source']['creater']
+            highlight_content=Searchengine.highlight_data(self,cont['highlight']['content'])
+
+            content=content.replace('\n','')
+            d['chapter'] = chapter
+            d['section'] = section
+            d['content'] = content
+            d['picture'] = picture
+            d['material_name'] = material_name
+            d['material_code'] = material_code
+            d['quote'] = quote
+            d['title'] = title
+            d['small_title'] = small_title
+            d['creatTime'] = creatTime
+            d['dataStatus']=dataStatus
+            d['versionNumber']=versionNumber
+            d['processStatus']=processStatus
+            d['desc'] = desc
+            d['source'] = source
+            d['top'] = top
+            d['creater'] = creater
+            d['highlight_content']=highlight_content
             new_article_list.append(d)
         return new_article_list
 
@@ -361,10 +440,9 @@ class Searchengine:
 
         return new_response
 
-
 if __name__ == "__main__":
     search_engine = Searchengine()
-    str='液压支架有哪些用途'
+    str='液压支架是什么'
     str=search_engine.strip_stopword(str)
     res = search_engine.search(str)
     #new_response=search_engine.manageSearch_data(res)
