@@ -1,3 +1,4 @@
+# -- coding: utf-8 --
 from material_data_process.get_result_data.kmp import *
 from material_data_process.get_result_data.get_jie_data2 import *
 from material_data_process.get_result_data.entity_label import Catalogue_data
@@ -80,3 +81,12 @@ if __name__ == "__main__":
     dic_path='./data/字典/word_dic.txt'
     seg=jieba_seg(keyword,dic_path)
     print(seg)
+
+    '''
+    pipreqs. / --encoding = utf8 - -force
+    --encoding=utf8 ：为使用utf8编码
+
+--force ：强制执行，当 生成目录下的requirements.txt存在时覆盖 
+
+. /: 在哪个文件生成requirements.txt 文件
+    '''

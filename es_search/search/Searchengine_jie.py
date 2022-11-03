@@ -442,7 +442,7 @@ class Searchengine:
 
 if __name__ == "__main__":
     search_engine = Searchengine()
-    str='液压支架是什么'
+    str='阻车器'
     str=search_engine.strip_stopword(str)
     res = search_engine.search(str)
     #new_response=search_engine.manageSearch_data(res)

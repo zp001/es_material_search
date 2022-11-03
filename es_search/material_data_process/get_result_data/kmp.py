@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import numpy as np
+
 def KMP(main_str, sub_str, next_locs):
     """
     作用：寻找子串(sub_str)在主串(main_str)中的位置
