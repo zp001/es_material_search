@@ -14,8 +14,6 @@ from PIL import Image
 import base64
 import re
 import tqdm
-import time
-
 
 import material_data_process.get_result_data.comput_similarity as ed
 from material_data_process.get_result_data import recog_small_title
@@ -140,7 +138,6 @@ def process_picture(image_list):
                 img_stream = base64.b64encode(blob)
                 bs64 = "<img src=\"data:image/png;base64,"+img_stream.decode('utf-8')+"\">"
                 p.append(bs64)
-
     return p
 
 def get_data_list(locations):
@@ -157,7 +154,6 @@ def get_data_list(locations):
 
     all_data_list=[i for j in all_data_list for i in j]
     for i in range(len(all_data_list)):
-        #if all_data_list[i].startswith('第'):
         if re.match(r'^[第][一二三四五六七八九十—]+节',all_data_list[i]):
             all_data_list_index.append(i)
     return all_data_list,all_data_list_index
