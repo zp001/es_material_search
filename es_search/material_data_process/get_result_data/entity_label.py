@@ -20,7 +20,6 @@ class Catalogue_data:
 
     def read_files(self,locations):
         section_list=[]
-
         for location in locations:
             with open(location, encoding='utf-8') as file:
                 content = file.readlines()
