@@ -254,8 +254,8 @@ def jaccard_list(word1,word2):
 
 def jaccard(word1,word2):
     """
-            jaccard相似度算法
-                    """
+        jaccard相似度算法
+         """
     return len(set(word1).intersection(set(word2))) / len(set(word1).union(set(word2)))
 
 def jieba_seg_word(str):
