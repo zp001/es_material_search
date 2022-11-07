@@ -82,10 +82,16 @@ def sort_position(position,position_substr):
     return position,position_substr
 
 def sort_sub_list(sup_list):
+    """
+    对目录数据按长度进行排序
+        """
     sup_list = sorted(sup_list, key=lambda i: len(i),reverse=True)
     return sup_list
 
 def get_new_main_str(contain_in,main_str):
+    """
+    掩盖前面匹配到的，向后寻找。
+        """
     ss = 'sssssssssssssssssss'
     for c in contain_in:
         l = c[1] - c[0]
@@ -93,6 +99,9 @@ def get_new_main_str(contain_in,main_str):
     return main_str
 
 def removeElement(nums, val):
+    """
+        移除数组中元素。
+            """
     #快慢双指针
     n=len(nums)
     slow=0
@@ -106,6 +115,10 @@ def removeElement(nums, val):
 
 #最大匹配优先原则
 def get_all_entity_position(p_list,s,section):
+    """
+    对于content内容中同一个目录文本，两个不同目录都能匹配，首先长度长的目录匹配，掩盖第一个匹配上的目录文本，短的目录向后匹配寻找另一个匹配目录。
+    如果短的目录没寻找到，交换，短的匹配第一个，长的目录向后寻找。
+        """
     already_entity_position = []
     already_entity_position_substr=[]
     p_list=sort_sub_list(p_list)
@@ -161,6 +174,9 @@ def get_all_entity_position(p_list,s,section):
     return already_entity_position,already_entity_position_substr
 
 def insert_label(position,s):
+    """
+        插入标签
+        """
     s=list(s)
     i=0
     for entity_position in position:
