@@ -32,8 +32,6 @@ def get_category_data(file):
     data=data.loc[:, ['类别编码', '类别名称']].values
     data = data.tolist()
     big_category_data,mid_category_data,small_category_data=segment_data(data)
-
-    #print(big_category_data)
     return data,big_category_data,mid_category_data,small_category_data
 
 def get_data_dic(big_category_data,mid_category_data,small_category_data):
@@ -106,7 +104,6 @@ def match_all_data(word,all_data,all_code):
             #big_cat=list(l.keys())[0]
             if len(t)!=0:
                 t=list(t)[0]
-                #print(t)
                 for k in range(len(t)):
                     p=t[k]
                     #mid_cat=list(p.keys())[0]
