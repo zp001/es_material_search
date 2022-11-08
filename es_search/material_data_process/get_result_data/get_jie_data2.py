@@ -49,7 +49,10 @@ def get_files(path):
     file_name.sort(key=lambda x: int(x.split('.')[0]))
     return file_name
 
-def sort_files1(files_list):
+def sort_files(files_list):
+    """
+    对前端上传的高拍仪word文档进行排序
+        """
     n=len(files_list)
     if n%2==0:
         for i in range(n//2):
@@ -61,23 +64,6 @@ def sort_files1(files_list):
             del files_list[int(n//2)+i+2]
 
     return files_list
-
-def sort_files(files_list):
-    f=[]
-    n=len(files_list)
-    if n%2==1:
-        for i in range(int(n//2)+1):
-            if i!=int(n//2):
-                f.append(files_list[i])
-                f.append(files_list[i+int(n//2)+1])
-            else:
-                f.append(files_list[i])
-    else:
-        for i in range(int(n // 2)):
-            f.append(files_list[i])
-            f.append(files_list[i + int(n // 2)])
-
-    return f
 
 def clean_text(para:str):
     """

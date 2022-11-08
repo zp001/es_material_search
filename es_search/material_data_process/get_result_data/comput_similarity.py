@@ -166,7 +166,7 @@ def match_all_data(word,all_data,all_code):
 
 def edit_distance(word1, word2):
     """
-            编辑距离算法
+            编辑距离
                 """
     len1 = len(word1)
     len2 = len(word2)

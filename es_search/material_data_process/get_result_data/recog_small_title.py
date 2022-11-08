@@ -12,7 +12,6 @@ def rec_small_title_kuohao(cont: list):
             index_list.append(k)
     return index_list
 
-
 def rec_small_title(cont: list):
     """
         识别二级小标题不是带括号形式的二级标题
