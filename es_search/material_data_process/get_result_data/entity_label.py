@@ -35,6 +35,7 @@ class Catalogue_data:
 
 def get_position(content,section):
     path = '..//material_data_process//get_result_data//data//目录数据//'
+    #path = './/data//目录数据//'
     get_catalogue = Catalogue_data()
     file_names = get_catalogue.sort_files(path)
     locations = get_catalogue.flies_location(path, file_names)
