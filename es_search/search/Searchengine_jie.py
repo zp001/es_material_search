@@ -250,7 +250,7 @@ class Searchengine:
                 highlight_content = hc
             else:
                 hc=[]
-                hc.append(d['content_text'][:400])
+                hc.append(d['content_text'][:400].replace('|',''))
                 highlight_content=hc
             d['highlight_content']=highlight_content
 
@@ -433,7 +433,7 @@ class Searchengine:
 
 if __name__ == "__main__":
     search_engine = Searchengine()
-    str='液压支架'
+    str='前言'
     res = search_engine.search(str)
     #new_response=search_engine.manageSearch_data(res)
     print(res[0]['highlight_content'])
