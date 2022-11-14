@@ -375,7 +375,7 @@ def get_last_data(new_data):
             jie_data["creatTime"] = now_time
 
         zhang_list.append(jie_data)
-    #print(zhang_list[2])
+
     return zhang_list
 
 def get_result_data(zhang_list,l,processStatus):
@@ -420,7 +420,6 @@ if __name__ == "__main__":
     all_data_list,all_data_list_index=get_data_list(locations)
     new_data=get_data_patition(all_data_list, all_data_list_index)
     zhang_list=get_last_data(new_data)
-    zhang_list=get_result_data(zhang_list)
     #load_data2es(zhang_list)
 
 
