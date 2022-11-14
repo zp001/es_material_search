@@ -20,15 +20,15 @@ def rec_small_title(cont: list):
     if len(index_list) == 0:
         index_list_s = []
         for c in cont:
-            if re.match(r'^\d+[\.]', c):
+            #if re.match(r'^\d+[\.]', c):
+            if re.match(r'^\d+[\.]+[\u4e00-\u9fa5]', c):
                 k = cont.index(c)
                 index_list_s.append(k)
-
         return index_list_s
     else:
         return index_list
 
-def concat_cont(index_list, cont):
+def concat_cont(index_list,cont):
     """
         二级小标题打标签，形成字符串形式，得到二级标题数组。
         """
@@ -36,7 +36,7 @@ def concat_cont(index_list, cont):
     if len(index_list) != 0:
         for i in index_list:
             child_small_title.append(cont[i])
-            cont[i]="<b>" + cont[i] + '</b>'
+            cont[i]="<h4>" + cont[i] + '</h4>'
         small_title_content = "|".join(cont)
         return small_title_content,child_small_title
     else:
@@ -97,6 +97,10 @@ PUT material
         "type": "text",
         "analyzer": "ik_max_word"
       },
+      "content_text": {
+        "type": "text",
+        "analyzer": "ik_max_word"
+      },
       "picture": {
         "type": "text"
       },
@@ -122,6 +126,9 @@ PUT material
       },
       "small_title": {
         "type": "keyword"
+      },
+      "all_title_tag": {
+        "type": "nested"
       },
       "creatTime": {
         "type": "date",
@@ -151,7 +158,7 @@ PUT material
       "processStatus": {
         "type": "text"
       },
-      "unfreezReason":{
+      "unfreeReason":{
         "type": "text"
       },
       "modifiedReason":{

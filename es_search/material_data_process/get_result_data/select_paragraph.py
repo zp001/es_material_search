@@ -37,9 +37,10 @@ def kmp_new_cont(con,keyword):
         return con
 
 def match_keyword(keyword,content):
+    re_cont_list=[]
     re_cont=[]
     search_position=[]
-    content_list=content.split('<br/>')
+    content_list=content.split('|')
     n = len(content_list)
     for i in range(n):
         if not content_list[i].startswith('<im'):
@@ -63,8 +64,9 @@ def match_keyword(keyword,content):
                     break
             else:
                 continue
-
-    return re_cont
+    re_cont = ''.join(re_cont)
+    re_cont_list.append(re_cont)
+    return re_cont_list
 
 def insert_label(search_position,con):
     con_list=list(con)
@@ -74,8 +76,8 @@ def insert_label(search_position,con):
     return new_con
 
 if __name__ == "__main__":
-    content='我是<br/>交换机<br/>和世界经济<br/>拉升阶段世界加拿大<br/>哈哈哈'
-    keyword='液压支架用途'
+    content='我是|交换机|和世界经济|拉升阶段世界加拿大|哈哈哈'
+    keyword='哈哈'
     re_cont=match_keyword(keyword,content)
     print(re_cont)
     dic_path='./data/字典/word_dic.txt'

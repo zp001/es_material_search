@@ -22,34 +22,15 @@ def search():
     pageNumber = json_info['pageNumber']
     pageSize = json_info['pageSize']
     searchValue=json_info['searchValue']
-    materialName = json_info['materialName']
-    materialCode = json_info['materialCode']
-    if searchValue!='' and materialName=='' and materialCode=='':
+    if searchValue != '':
         searchValue=searchengine.strip_stopword(searchValue)
-        searchValue = searchValue.strip()
         response = searchengine.search(searchValue)
         n=len(response)
         slice_response = searchengine.data_slice(response, pageNumber, pageSize)
         reponsedic['data'] = slice_response
         reponsedic['number'] = n
 
-    if materialName!='' and searchValue=='' and materialCode=='':
-        response = searchengine.search_m(materialName)
-        n = len(response)
-        slice_response = searchengine.data_slice(response, pageNumber, pageSize)
-        reponsedic['data'] = slice_response
-        reponsedic['number'] = n
-        #reponsedic['data'] = response
-
-    if materialCode!='' and searchValue=='' and materialName=='':
-        response = searchengine.search_c(materialCode)
-        n = len(response)
-        slice_response = searchengine.data_slice(response, pageNumber, pageSize)
-        reponsedic['data'] = slice_response
-        reponsedic['number'] = n
-        #reponsedic['data'] = response
-
-    if materialCode=='' and searchValue=='' and materialName=='':
+    if searchValue == '':
         res=searchengine.search_null()
         n = len(res)
         response = searchengine.data_slice(res, pageNumber, pageSize)
@@ -71,7 +52,6 @@ def search():
     else:
         response = searchengine.history_search(searchValue,versionNumber)
         response=searchengine.get_new_article_list(response)
-        print(response)
         reponsedic['details'] = response
     return jsonify(reponsedic)
 
@@ -79,8 +59,8 @@ def search():
 def upload_files():
     reponsedic = {}
     uploaded_files = request.files.getlist('files')
-    print(uploaded_files)
     #uploaded_files=sort_files(uploaded_files)
+    print(uploaded_files)
     word_file_list=[]
     for file in uploaded_files:
         f = io.BytesIO(file.read())
@@ -88,7 +68,6 @@ def upload_files():
     all_data_list, all_data_list_index = get_data_list(word_file_list)
     new_data = get_data_patition(all_data_list, all_data_list_index)
     zhang_list = get_last_data(new_data)
-    #print(zhang_list)
     reponsedic['data'] = zhang_list
 
     return jsonify(reponsedic)
@@ -98,17 +77,26 @@ def download_files_data():
     reponsedic = {}
     data = request.get_json()
     data=data['data']
-    print(data)
+    #print(data[0]['all_title'])
+    title_index, small_title_index, title_list, small_title_list=searchengine.update_small_title(data[0]['all_title'])
+    #ts_list=title_smallTitle(title_index, small_title_index, title_list, small_title_list)
+    #data[0]['grade_all_title']=ts_list
+    data[0]['small_title'] = small_title_list
+    data[0]['title']=title_list
+    data[0]['combin_title'] = [data[0]['section'] + w[2:] for w in title_list]
+    del data[0]['all_title']
+    content_text=searchengine.updete_content(data[0]['content'])
+    data[0]['content_text'] = content_text
     article_list = searchengine.update_es_data(data[0]['section'])
     if len(article_list)==0:
-        new_data = get_result_data_s(data,1)
+        new_data = get_result_data(data,1,'已完成')
         load_data2es(new_data)
         reponsedic['data'] = new_data
     else:
         if article_list[0]['_source']['processStatus']=='待提交':
             res_update=searchengine.data2es_submit(article_list[0],data,len(article_list))
         else:
-            new_data = get_result_data_s(data,len(article_list)+1)
+            new_data = get_result_data(data,len(article_list)+1,'已完成')
             load_data2es(new_data)
             reponsedic['data'] = new_data
     return jsonify(reponsedic)
@@ -118,17 +106,23 @@ def saveDraft():
     reponsedic = {}
     data = request.get_json()
     data=data['data']
-    print(data)
+    title_index, small_title_index, title_list, small_title_list = searchengine.update_small_title(data[0]['all_title'])
+    data[0]['small_title'] = small_title_list
+    data[0]['title'] = title_list
+    data[0]['combin_title'] = [data[0]['section'] + w[2:] for w in title_list]
+    del data[0]['all_title']
+    content_text = searchengine.updete_content(data[0]['content'])
+    data[0]['content_text'] = content_text
     article_list = searchengine.update_es_data(data[0]['section'])
     if len(article_list) == 0:
-        new_data=get_result_data(data)
+        new_data=get_result_data(data,0,'待提交')
         load_data2es(new_data)
         reponsedic['data'] = new_data
     else:
         if article_list[0]['_source']['processStatus']=='待提交':
             new_data = searchengine.data2es_save(article_list[0], data)
         else:
-            new_data = get_result_data(data)
+            new_data = get_result_data(data,0,'待提交')
             load_data2es(new_data)
             reponsedic['data'] = new_data
     return jsonify(reponsedic)
@@ -143,7 +137,6 @@ def manage_search():
     section = json_info['section']
     if section!='':
         searchValue = searchengine.strip_stopword(section)
-        searchValue = searchValue.strip()
         response = searchengine.search(searchValue)
         new_response=searchengine.manageSearch_data(response)
         print(new_response)
@@ -234,18 +227,6 @@ def search():
     reponsedic['histVersion']=new_response
 
     return jsonify(reponsedic)
-
-@server.route("/histRecord", methods=["GET", "POST"],endpoint="histRecord")
-def search():
-    reponsedic = {}
-    json_info = request.json
-    print(json_info)
-    searchValue=json_info['histRecord']
-    response=searchengine.update_es_data(searchValue)
-    new_response=searchengine.history_V(response)
-    reponsedic['histRecord']=new_response
-    return jsonify(reponsedic)
-
 
 if __name__ == "__main__":
     server.config['JSON_AS_ASCII'] = False

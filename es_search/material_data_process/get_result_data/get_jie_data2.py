@@ -173,6 +173,7 @@ def get_material_catg():
         得到物料名称和代码对应数据
         """
     file = '..//material_data_process//get_result_data//data//物料类别数据//物料类别.xls'
+    #file = './/data//物料类别数据//物料类别.xls'
     bms_all_data, big_category_data, mid_category_data, small_category_data = ed.get_category_data(file)
     bms_data, bms_code = ed.get_data_dic(big_category_data, mid_category_data, small_category_data)
     return bms_data,bms_code
@@ -183,12 +184,13 @@ def get_small_title(con,section):
         """
     title=[]
     combin_title=[]
+    title_index = []
     for d in con:
-        #if re.match(r'^[一二三四五六七八九十—]+、', d):
-            #s = d.split('、')[1]
-        if re.match(r'^[一二三四五六七八九十—]', d):
-            #s=d.split('、')[1]
-            s=d[2:]
+        #if re.match(r'^[一二三四五六七八九十—]+[^\u4e00-\u9fa5]', d):
+        if re.match(r'^[一二三四五六七八九十—]+、', d):
+            index_d=con.index(d)
+            title_index.append(index_d)
+            s = d.split(d[1])[1]
             if '引用' in s:
                 ind=s.index('引')
                 s=s[:ind-1]
@@ -201,7 +203,45 @@ def get_small_title(con,section):
             new_d= "<h3>" + d + '</h3>'
             con[i]=new_d
 
-    return title,con,combin_title
+    return title,con,combin_title,title_index
+
+def title_smallTitle(title_index,small_title_index,title,small_title):
+    ts=title_index+small_title_index
+    ts=sorted(ts)
+    ts_list=[]
+    d=0
+    for j in range(len(title_index)):
+        ts_dic = {}
+        if j!=len(title_index)-1:
+            ind1=ts.index(title_index[j])
+            ind2 = ts.index(title_index[j+1])
+            s = len(ts[ind1 + 1:ind2])
+            d = d + s
+            ts_dic[title[j]] = small_title[d - s:d]
+            #ts_dic[title[j]]=ts[ind1+1:ind2]
+        else:
+            ind1=ts.index(title_index[j])
+            s = len(ts[ind1 + 1:])
+            ts_dic[title[j]] = small_title[d - s:d]
+            #ts_dic[title[j]] = ts[ind1 + 1:]
+        ts_list.append(ts_dic)
+    return ts_list
+
+def all_title_tag(title,small_title):
+    all_title_tag=[]
+    for t in title:
+        d={}
+        d['title']=t
+        d['tag']=1
+        all_title_tag.append(d)
+    for s in small_title:
+        d = {}
+        d['title'] = s
+        d['tag'] = 2
+        all_title_tag.append(d)
+    return all_title_tag
+
+
 
 def get_para_pic(jie_list):
     """
@@ -253,14 +293,16 @@ def remove_picture(s):
     new_s='|'.join(l for l in s_list[0:j])
     return pic,pic_ind,new_s
 
+
 def insert_picture(pic,pic_ind,label_new_s):
     """
         将图片重新插入到打上标签的内容中
         """
     label_s_list = label_new_s.split("|")
+    new_label_s_list = ['<p>' + w + '</p>' for w in label_s_list]
     for i in range(len(pic_ind)):
-        label_s_list.insert(pic_ind[i],pic[i])
-    label_s = '|'.join(l for l in label_s_list)
+        new_label_s_list.insert(pic_ind[i],pic[i])
+    label_s = ''.join(l for l in new_label_s_list)
     return label_s
 
 def get_last_data(new_data):
@@ -277,6 +319,8 @@ def get_last_data(new_data):
             jie_data["chapter"] = name_zhang
             jie_data["section"] = name_zhang+'前言'
             #jie_data["content"] = new_data[i][1:]
+            new_c = [p for p in new_data[i][1:] if not p.startswith('<img')]
+            new_c_str = '|'.join(l for l in new_c)
             small_index_list = recog_small_title.rec_small_title(new_data[i][1:])
             s, small_title = recog_small_title.concat_cont(small_index_list, new_data[i][1:])
             pic,pic_ind,new_s=remove_picture(s)
@@ -284,6 +328,7 @@ def get_last_data(new_data):
             label_new_s = insert_label(position, new_s)
             label_pic_s = insert_picture(pic, pic_ind, label_new_s)
             jie_data["content"] = label_pic_s
+            jie_data["content_text"] = new_c_str
             jie_pic=get_para_pic_list(new_data[i][1:])
             jie_data["picture"] = jie_pic
             jie_data['material_name'] = []
@@ -291,23 +336,30 @@ def get_last_data(new_data):
             jie_data["quote"] = ''
             jie_data["title"] = []
             jie_data["combin_title"] = []
-            jie_data["small_title"] = small_title
+            jie_data["small_title"] = []
+            #jie_data["grade_all_title"] = []
+            jie_data["all_title_tag"] = []
             now_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             jie_data["creatTime"] = now_time
         if i!=0:
             if '引用' in new_data[i][1]:
                 jyy = re.sub('[()（）]', '', new_data[i][1])
-            title, con,combin_title= get_small_title(new_data[i],new_data[i][0].split('节')[1])
+            title,con,combin_title,title_index= get_small_title(new_data[i],new_data[i][0].split('节')[1])
             jie_data["chapter"] = name_zhang
             jie_data["section"]=new_data[i][0].split('节')[1]
             #jie_data["content"] = con[1:]
+            new_c = [p for p in con[1:] if not p.startswith('<img')]
+            new_c_str = '|'.join(l for l in new_c)
             small_index_list = recog_small_title.rec_small_title(con[1:])
             s, small_title = recog_small_title.concat_cont(small_index_list, con[1:])
+            #ts_list=title_smallTitle(title_index, small_index_list, title, small_title)
+            all_title_tag_list=all_title_tag(title, small_title)
             pic, pic_ind, new_s = remove_picture(s)
             position, position_substr = get_position(new_s, new_data[i][0].split('节')[1])
             label_new_s = insert_label(position, new_s)
             label_pic_s = insert_picture(pic, pic_ind, label_new_s)
             jie_data["content"] = label_pic_s
+            jie_data["content_text"] = new_c_str
             jie_pic = get_para_pic_list(new_data[i][1:])
             jie_data["picture"] = jie_pic
             mat_sort_sim_list, cod_sort_sim_list = ed.match_all_data(new_data[i][0].split('节')[1], bms_data, bms_code)
@@ -317,36 +369,16 @@ def get_last_data(new_data):
             jie_data["title"] = title
             jie_data["combin_title"] = combin_title
             jie_data["small_title"] = small_title
+            #jie_data["grade_all_title"] = ts_list
+            jie_data["all_title_tag"] = all_title_tag_list
             now_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             jie_data["creatTime"] = now_time
 
         zhang_list.append(jie_data)
-    #print(zhang_list)
+    #print(zhang_list[2])
     return zhang_list
 
-def get_result_data(zhang_list):
-    """
-        添加一些前端传回的字段
-        """
-    new_zhang_list = []
-    for t in zhang_list:
-        updateTime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        t["updateTime"] =updateTime
-        t["creater"] = 'admin'
-        t["modifiedName"] = 'admin'
-        t["dataStatus"] = '活动'
-        t["versionNumber"] = 0
-        t["processStatus"] = '待提交'
-        t["desc"] = zhang_list[0]['desc']
-        t["source"] = zhang_list[0]['source']
-        t["top"] = zhang_list[0]['top']
-        t["unfreezReason"] = ''
-        t["modifiedReason"] = ''
-        new_zhang_list.append(t)
-    #print(new_zhang_list)
-    return new_zhang_list
-
-def get_result_data_s(zhang_list,l):
+def get_result_data(zhang_list,l,processStatus):
     """
         添加一些前端传回的字段
         """
@@ -358,14 +390,14 @@ def get_result_data_s(zhang_list,l):
         t["modifiedName"] = 'admin'
         t["dataStatus"] = '活动'
         t["versionNumber"] = l
-        t["processStatus"] = '已完成'
+        t["processStatus"] = processStatus
         t["desc"] = zhang_list[0]['desc']
         t["source"] = zhang_list[0]['source']
         t["top"] = zhang_list[0]['top']
         t["unfreezReason"] = ''
         t["modifiedReason"] = ''
         new_zhang_list.append(t)
-    #print(new_zhang_list)
+
     return new_zhang_list
 
 def load_data2es(article_list):
@@ -377,19 +409,19 @@ def load_data2es(article_list):
         try:
             base_url = "http://localhost:9200/" + "material" + "/" + "_doc" + "/"
             response = requests.post(base_url, headers={"Content-Type": "application/json"}, data=data.encode())
-            print(response)
+            #print(response)
         except:
             print("失败")
 
 if __name__ == "__main__":
-    path="D://work//data//example_data//第一章2//"
+    path="D://work//data//example_data//第一章//"
     file_name=get_files(path)
     locations=process_flies(path,file_name)
     all_data_list,all_data_list_index=get_data_list(locations)
     new_data=get_data_patition(all_data_list, all_data_list_index)
     zhang_list=get_last_data(new_data)
+    zhang_list=get_result_data(zhang_list)
     #load_data2es(zhang_list)
-
 
 
 '''
