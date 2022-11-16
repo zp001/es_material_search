@@ -121,14 +121,26 @@ PUT material
       "title": {
         "type": "keyword"
       },
+      "title_quote": {
+        "type": "keyword"
+      },
       "combin_title": {
         "type": "keyword"
       },
       "small_title": {
         "type": "keyword"
       },
+      "small_title_quote": {
+        "type": "keyword"
+      },
+      "all_quote": {
+        "type": "keyword"
+      },
       "all_title_tag": {
         "type": "nested"
+      },
+      "all_title": {
+        "type": "keyword"
       },
       "creatTime": {
         "type": "date",
@@ -153,7 +165,12 @@ PUT material
         "format":"yyyy-MM-dd HH:mm:ss"
       },
       "dataStatus": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "dataStatu": { 
+            "type":  "keyword"
+          }
+        }
       },
       "processStatus": {
         "type": "text"

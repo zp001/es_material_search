@@ -92,3 +92,127 @@ if __name__ == "__main__":
 
 . /: 在哪个文件生成requirements.txt 文件
     '''
+'''
+PUT materials
+{
+  "mappings": {
+    "properties": {
+      "chapter": {
+        "type": "text",
+        "analyzer": "ik_smart",
+        "fields": {
+          "zhang": { 
+            "type":  "keyword"
+          }
+        }
+      },
+      "section": {
+        "type": "text",
+        "analyzer": "ik_smart",
+        "fields": {
+          "jie": { 
+            "type":  "keyword"
+          }
+        }
+      },
+      "desc": {
+        "type": "text"
+      },
+      "source": {
+        "type": "text"
+      },
+      "top": {
+        "type": "text"
+      },
+      "content": {
+        "type": "text",
+        "analyzer": "ik_smart"
+      },
+      "content_text": {
+        "type": "text",
+        "analyzer": "ik_smart"
+      },
+      "picture": {
+        "type": "text"
+      },
+      "material_name": {
+        "type": "keyword"
+      },
+      "material_code": {
+        "type": "keyword"
+      },
+      "quote": {
+        "type": "text",
+        "fields": {
+          "jty": { 
+            "type":  "keyword"
+          }
+        }
+      },
+      "title": {
+        "type": "keyword"
+      },
+      "title_quote": {
+        "type": "keyword"
+      },
+      "combin_title": {
+        "type": "keyword"
+      },
+      "small_title": {
+        "type": "keyword"
+      },
+      "small_title_quote": {
+        "type": "keyword"
+      },
+      "all_quote": {
+        "type": "keyword"
+      },
+      "all_title_tag": {
+        "type": "nested"
+      },
+      "all_title": {
+        "type": "keyword"
+      },
+      "creatTime": {
+        "type": "date",
+        "format":"yyyy-MM-dd HH:mm:ss"
+      },
+      "creater": {
+        "type": "text"
+      },
+      "versionNumber": {
+        "type": "integer",
+        "fields": {
+          "versionNo": { 
+            "type":  "keyword"
+          }
+        }
+      },
+      "modifiedName": {
+        "type": "text"
+      },
+      "updateTime": {
+        "type": "date",
+        "format":"yyyy-MM-dd HH:mm:ss"
+      },
+      "dataStatus": {
+        "type": "text",
+        "fields": {
+          "dataStatu": { 
+            "type":  "keyword"
+          }
+        }
+      },
+      "processStatus": {
+        "type": "text"
+      },
+      "unfreeReason":{
+        "type": "text"
+      },
+      "modifiedReason":{
+        "type": "text"
+      } 
+      }
+    }
+  }
+'''

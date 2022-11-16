@@ -30,7 +30,7 @@ def search():
         reponsedic['data'] = slice_response
         reponsedic['number'] = n
 
-    if searchValue == '':
+    if searchValue == "":
         res=searchengine.search_null()
         n = len(res)
         response = searchengine.data_slice(res, pageNumber, pageSize)
@@ -46,7 +46,7 @@ def search():
     print(json_info)
     searchValue=json_info['title']
     versionNumber=json_info['versionNumber']
-    if versionNumber=='':
+    if versionNumber=="":
         response=searchengine.search(searchValue)
         reponsedic['details']=response
     else:
@@ -59,7 +59,7 @@ def search():
 def upload_files():
     reponsedic = {}
     uploaded_files = request.files.getlist('files')
-    #uploaded_files=sort_files(uploaded_files)
+    uploaded_files=sort_files(uploaded_files)
     print(uploaded_files)
     word_file_list=[]
     for file in uploaded_files:
@@ -77,14 +77,19 @@ def download_files_data():
     reponsedic = {}
     data = request.get_json()
     data=data['data']
-    #print(data[0]['all_title'])
     title_index, small_title_index, title_list, small_title_list=searchengine.update_small_title(data[0]['all_title'])
     #ts_list=title_smallTitle(title_index, small_title_index, title_list, small_title_list)
     #data[0]['grade_all_title']=ts_list
     data[0]['small_title'] = small_title_list
     data[0]['title']=title_list
-    data[0]['combin_title'] = [data[0]['section'] + w[2:] for w in title_list]
-    del data[0]['all_title']
+    title_quote = get_quote(title_list)
+    data[0]['title_quote'] = title_quote
+    small_title_quote = get_quote(small_title_list)
+    data[0]['small_title_quote'] = small_title_quote
+    all_quote = get_all_quote(data[0]['quote'], title_quote, small_title_quote)
+    data[0]['all_quote'] = all_quote
+    new_title_list = searchengine.get_combin_title(title_list)
+    data[0]['combin_title'] = [data[0]['section'] + w for w in new_title_list]
     content_text=searchengine.updete_content(data[0]['content'])
     data[0]['content_text'] = content_text
     article_list = searchengine.update_es_data(data[0]['section'])
@@ -109,8 +114,14 @@ def saveDraft():
     title_index, small_title_index, title_list, small_title_list = searchengine.update_small_title(data[0]['all_title'])
     data[0]['small_title'] = small_title_list
     data[0]['title'] = title_list
-    data[0]['combin_title'] = [data[0]['section'] + w[2:] for w in title_list]
-    del data[0]['all_title']
+    title_quote=get_quote(title_list)
+    data[0]['title_quote']=title_quote
+    small_title_quote = get_quote(small_title_list)
+    data[0]['small_title_quote'] = small_title_quote
+    all_quote=get_all_quote(data[0]['quote'],title_quote,small_title_quote)
+    data[0]['all_quote'] = all_quote
+    new_title_list=searchengine.get_combin_title(title_list)
+    data[0]['combin_title'] = [data[0]['section'] + w for w in new_title_list]
     content_text = searchengine.updete_content(data[0]['content'])
     data[0]['content_text'] = content_text
     article_list = searchengine.update_es_data(data[0]['section'])
@@ -135,9 +146,8 @@ def manage_search():
     pageNumber = json_info['pageNumber']
     pageSize = json_info['pageSize']
     section = json_info['section']
-    if section!='':
-        searchValue = searchengine.strip_stopword(section)
-        response = searchengine.search(searchValue)
+    if section!="":
+        response = searchengine.search(section)
         new_response=searchengine.manageSearch_data(response)
         print(new_response)
         n = len(response)
@@ -145,8 +155,8 @@ def manage_search():
         reponsedic['data'] = slice_response
         reponsedic['number'] = n
 
-    if section == '':
-        response = searchengine.search_null()
+    if section == "":
+        response = searchengine.search_null_manage()
         new_response = searchengine.manageSearch_data(response)
         n = len(response)
         response = searchengine.data_slice(new_response, pageNumber, pageSize)
@@ -154,7 +164,7 @@ def manage_search():
         reponsedic['number'] = n
 
     return jsonify(reponsedic)
-
+'''
 @server.route("/edit", methods=["POST", "GET"],endpoint="edit")
 def manage_edit():
     reponsedic = {}
@@ -162,6 +172,16 @@ def manage_edit():
     print(json_info)
     section = json_info['section']
     response = searchengine.search(section)
+    reponsedic['data'] = response
+    return jsonify(reponsedic)
+    '''
+@server.route("/edit", methods=["POST", "GET"],endpoint="edit")
+def manage_edit():
+    reponsedic = {}
+    json_info = request.json
+    chapter = json_info['chapter']
+    print(chapter)
+    response = searchengine.search_chapter(chapter)
     reponsedic['data'] = response
     return jsonify(reponsedic)
 
@@ -227,6 +247,16 @@ def search():
     reponsedic['histVersion']=new_response
 
     return jsonify(reponsedic)
+
+@server.route("/delete", methods=["GET", "POST"],endpoint="delete")
+def delete_data():
+    json_info = request.json
+    print(json_info)
+    section = json_info['section']
+    versionNumber = json_info['versionNumber']
+    searchengine.delete(section, versionNumber)
+
+    return 'success'
 
 if __name__ == "__main__":
     server.config['JSON_AS_ASCII'] = False

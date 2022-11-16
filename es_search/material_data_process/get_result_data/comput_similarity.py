@@ -222,6 +222,7 @@ def pro_catg_data(data:str):
     data = re.sub('/', '', data)
     data = re.sub('/.', '', data)
     data = re.sub('[()（）]', '', data)
+    data = re.sub('设备', '', data)
 
     return data
 def match_data(word,data):

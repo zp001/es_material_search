@@ -1,9 +1,9 @@
 import datetime
-
+from material_data_process.get_result_data.get_jie_data2 import *
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 import re
-from  material_data_process.get_result_data.select_paragraph import match_keyword,jieba_seg
+from material_data_process.get_result_data.select_paragraph import match_keyword,jieba_seg
 
 class Searchengine:
     def __init__(self):
@@ -69,7 +69,7 @@ class Searchengine:
 
     def updete_content(self,content):
         content = content.split("</p><p>")
-        new_content = [Searchengine.filter_content(self,c) for c in content]
+        new_content = [Searchengine.filter_content(self,c) for c in content if not c.startswith('<im')]
         new_content_s = '|'.join(l for l in new_content)
         return new_content_s
 
@@ -113,10 +113,8 @@ class Searchengine:
                     ]
                 }
             },
-            "sort": [{"versionNumber": {'order': "desc"}}],
-            "collapse": {
-                "field": "section.jie"
-            },
+            #"sort": [{"versionNumber": {'order': "desc"}}],
+            #"collapse": {"field": "section.jie"},
             "highlight": {
                 "fields": {
                     "content_text": {}
@@ -138,13 +136,40 @@ class Searchengine:
                 "match_all": {}
             },
             "sort": [{"versionNumber": {'order': "desc"}}],
-            "collapse": {
-                "field": "section.jie"
+            "collapse": {"field": "section.jie"}
+        }
+        article_list = Searchengine.title_search(self, query)
+        article_list_null = Searchengine.get_new_article_list(self, article_list)
+        for c in article_list_null:
+            if c['dataStatus']=='冻结':
+                del c
+        return article_list_null
+
+    def search_null_manage(self):
+        query = {
+            "size": 10000,
+            "query": {
+                "match_all": {}
             }
         }
         article_list = Searchengine.title_search(self, query)
         article_list_null = Searchengine.get_new_article_list(self, article_list)
         return article_list_null
+
+    def search_chapter(self, keywords):
+        query_chapter = {
+            "query":
+                {"term": {"chapter.zhang": "{}".format(keywords)}
+                 },
+            "sort": [{"versionNumber": {'order': "desc"}}],
+            "collapse": {
+                "field": "section.jie"
+            }
+        }
+
+        article_list=Searchengine.title_search(self,query_chapter)
+        article_list = Searchengine.get_new_article_list(self, article_list)
+        return article_list
 
     def search_m(self,keywords):
         query_material_label={
@@ -197,7 +222,7 @@ class Searchengine:
             }
         }
         query_content = {
-            "size": 10,
+            "size": 20,
             "query": {
                 "bool": {
                     "should": [
@@ -243,6 +268,13 @@ class Searchengine:
             d['source'] = cont['_source']['source']
             d['top'] = cont['_source']['top']
             d['creater'] = cont['_source']['creater']
+
+            d['title_quote'] = cont['_source']['title_quote']
+            d['small_title_quote'] = cont['_source']['small_title_quote']
+            d['all_quote'] = cont['_source']['all_quote']
+            d['all_title'] = cont['_source']['all_title']
+            #d['all_title_tag'] = cont['_source']['all_title_tag']
+
             if 'highlight' in cont:
                 hc=[]
                 hl=cont['highlight']['content_text'][0].replace('|','')
@@ -282,8 +314,9 @@ class Searchengine:
         new_response = []
         for d in response:
             dic = {}
+            dic['chapter'] = d['chapter']
             dic['section'] = d['section']
-            dic['quote'] = d['quote']
+            dic['all_quote'] = d['all_quote']
             dic['dataStatus'] = d['dataStatus']
             dic['versionNumber'] = d['versionNumber']
             dic['processStatus'] = d['processStatus']
@@ -323,26 +356,40 @@ class Searchengine:
 
     def data2es_save(self,article_list,data):
         content_text = Searchengine.updete_content(self,data[0]['content'])
-        title_index, small_title_index, title_list, small_title_list = Searchengine.update_small_title(data[0]['all_title'])
-        combin_title = [data[0]['section'] + w[2:] for w in title_list]
+        title_index, small_title_index, title_list, small_title_list = Searchengine.update_small_title(self,data[0]['all_title'])
+        new_title_list = Searchengine.get_combin_title(self,title_list)
+        combin_title = [data[0]['section'] + w for w in new_title_list]
+
+        title_quote = get_quote(title_list)
+        small_title_quote = get_quote(small_title_list)
+        all_quote = get_all_quote(data[0]['quote'], title_quote, small_title_quote)
+
         res_update = self.es.update(index='material', id=article_list['_id'],
                                     body={'doc':{'content': data[0]['content'], 'picture': data[0]['picture'],'all_title_tag':data[0]['all_title_tag'],
                                                  'title':title_list,'small_title':small_title_list,'combin_title':combin_title,
                                                   'content_text':content_text,'desc': data[0]['desc'], 'source': data[0]['source'],
-                                                  'top': data[0]['top'],'versionNumber':0,
+                                                  'dataStatus': data[0]['dataStatus'],'versionNumber':0,'all_title':data[0]['all_title'],
+                                                 'title_quote':title_quote,'small_title_quote':small_title_quote,'all_quote':all_quote,
                                                     'processStatus':'待提交','updateTime':datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                                   }})
         return res_update
 
     def data2es_submit(self,article_list,data,l):
         content_text = Searchengine.updete_content(self, data[0]['content'])
-        title_index, small_title_index, title_list, small_title_list = Searchengine.update_small_title(data[0]['all_title'])
-        combin_title = [data[0]['section'] + w[2:] for w in title_list]
+        title_index, small_title_index, title_list, small_title_list = Searchengine.update_small_title(self,data[0]['all_title'])
+        new_title_list = Searchengine.get_combin_title(self, title_list)
+        combin_title = [data[0]['section'] + w for w in new_title_list]
+
+        title_quote = get_quote(title_list)
+        small_title_quote = get_quote(small_title_list)
+        all_quote = get_all_quote(data[0]['quote'], title_quote, small_title_quote)
+
         res_update = self.es.update(index='material', id=article_list['_id'],
                                     body={'doc':{'content': data[0]['content'], 'picture': data[0]['picture'],'all_title_tag':data[0]['all_title_tag'],
                                                  'title': title_list, 'small_title': small_title_list,'combin_title': combin_title,
                                                   'content_text':content_text,'desc': data[0]['desc'], 'source': data[0]['source'],
-                                                  'top': data[0]['top'],'versionNumber':l,
+                                                  'dataStatus': data[0]['dataStatus'],'versionNumber':l,'all_title':data[0]['all_title'],
+                                                 'title_quote': title_quote, 'small_title_quote': small_title_quote,'all_quote': all_quote,
                                                     'processStatus':'已完成','updateTime':datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                                   }})
         return res_update
@@ -430,13 +477,37 @@ class Searchengine:
                 small_title_list.append(t)
         return title_index, small_title_index, title_list, small_title_list
 
+    def get_combin_title(self,title_list):
+        new_title_list=[]
+        for s in title_list:
+            if '引用' in s:
+                ind=s.index('引')
+                new_s=s[2:ind-1]
+                new_title_list.append(new_s)
+            if '引用' not in s:
+                if '(' in s or '（' in s:
+                    s.replace('(','（')
+                    new_s=s.split('（')[0]
+                else:
+                    new_s=s[2:]
+                new_title_list.append(new_s)
+        return new_title_list
+
+    def delete(self,section,versionNumber):
+        query = {"query": {"bool": {"must": [
+            {"term": {"section.jie": "{}".format(section)}},
+            {"term": {"versionNumber.versionNo": "{}".format(versionNumber)}}]}
+        }
+        }
+        self.es.delete_by_query(index='material', body=query)
+        return 'success'
 
 if __name__ == "__main__":
     search_engine = Searchengine()
-    str='前言'
+    str='液压支架是什么'
     res = search_engine.search(str)
     #new_response=search_engine.manageSearch_data(res)
-    print(res[0]['highlight_content'])
+    print(res[0]['section'])
     article_list=search_engine.update_es_data('液压支架')
     slice_data= search_engine.data_slice(res,1,5)
 

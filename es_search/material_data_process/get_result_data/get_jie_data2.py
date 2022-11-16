@@ -193,11 +193,18 @@ def get_small_title(con,section):
             s = d.split(d[1])[1]
             if '引用' in s:
                 ind=s.index('引')
-                s=s[:ind-1]
-                s = section + s
-            else:
-                s=section+s
-            combin_title.append(s)
+                new_s=s[:ind-1]
+                conbin_s = section + new_s
+                combin_title.append(conbin_s)
+            if '引用' not in s:
+                if '(' in s or '（' in s:
+                    s.replace('(','（')
+                    new_s=s.split('（')[0]
+                    conbin_s = section + new_s
+                    combin_title.append(conbin_s)
+                else:
+                    conbin_s=section+s
+                    combin_title.append(conbin_s)
             title.append(d)
             i=con.index(d)
             new_d= "<h3>" + d + '</h3>'
@@ -227,20 +234,44 @@ def title_smallTitle(title_index,small_title_index,title,small_title):
         ts_list.append(ts_dic)
     return ts_list
 
-def all_title_tag(title,small_title):
+def all_title_tag(title_index,small_title_index,title,small_title):
+    ts = title_index + small_title_index
+    ts = sorted(ts)
+    all_title = []
     all_title_tag=[]
-    for t in title:
-        d={}
-        d['title']=t
-        d['tag']=1
-        all_title_tag.append(d)
-    for s in small_title:
-        d = {}
-        d['title'] = s
-        d['tag'] = 2
-        all_title_tag.append(d)
-    return all_title_tag
+    d = 0
+    for j in range(len(title_index)):
+        dt={}
+        if j != len(title_index) - 1:
+            ind1 = ts.index(title_index[j])
+            ind2 = ts.index(title_index[j + 1])
+            s = len(ts[ind1 + 1:ind2])
+            d = d + s
+            all_title.append(title[j])
+            all_title.extend(small_title[d - s:d])
+            dt['title']=title[j]
+            dt['tag']='1'
+            all_title_tag.append(dt)
+            for st in small_title[d - s:d]:
+                std={}
+                std['title'] = st
+                std['tag'] = '2'
+                all_title_tag.append(std)
+        else:
+            ind1 = ts.index(title_index[j])
+            s = len(ts[ind1 + 1:])
+            all_title.append(title[j])
+            all_title.extend(small_title[d - s:d])
+            dt['title'] = title[j]
+            dt['tag'] = '1'
+            all_title_tag.append(dt)
+            for st in small_title[d - s:d]:
+                std = {}
+                std['title'] = st
+                std['tag'] = '2'
+                all_title_tag.append(std)
 
+    return all_title_tag,all_title
 
 
 def get_para_pic(jie_list):
@@ -301,9 +332,46 @@ def insert_picture(pic,pic_ind,label_new_s):
     label_s_list = label_new_s.split("|")
     new_label_s_list = ['<p>' + w + '</p>' for w in label_s_list]
     for i in range(len(pic_ind)):
-        new_label_s_list.insert(pic_ind[i],pic[i])
+        new_label_s_list.insert(pic_ind[i],'<p>' +pic[i]+ '</p>')
     label_s = ''.join(l for l in new_label_s_list)
     return label_s
+
+def get_quote(title):
+    all_q = []
+    for t in title:
+        if '引用' in t:
+            q = t.split('引用')[1][:-1]
+            q=q[:-5]+'—'+q[-4:]
+            if q not in all_q:
+                all_q.append(q)
+        else:
+            if '(' in t or '（' in t:
+                #if re.match(r'[(（][/a-zA-Z0-9][)）]', t):
+                #p = re.compile(r'[（](.*)[）]', re.S) #匹配（）内内容，不加?,贪婪匹配,最终获取的为【最外层括号包含的内容 】
+                p = re.compile(r'[（(](.*?)[）)]', re.S) #匹配（）内内容，加?，最小匹配
+                t=re.findall(p,t)
+                q=t[0]
+                if q[-4:].isdigit():
+                    q = q[:-5] + '—' + q[-4:]
+                    if q not in all_q:
+                        all_q.append(q)
+            else:
+                continue
+    all_q=list(set(all_q))
+    return all_q
+def get_all_quote(jyy:str,title_quote,small_title_quote):
+    for s in small_title_quote:
+        if s in title_quote:
+            small_title_quote.remove(s)
+    title_quote.extend(small_title_quote)
+    if jyy in title_quote:
+        title_quote.remove(jyy)
+        title_quote.insert(0,jyy)
+    else:
+        if jyy!='':
+            title_quote.insert(0, jyy)
+    title_quote=list(set(title_quote))
+    return title_quote
 
 def get_last_data(new_data):
     """
@@ -335,15 +403,21 @@ def get_last_data(new_data):
             jie_data['material_code'] = []
             jie_data["quote"] = ''
             jie_data["title"] = []
+            jie_data["title_quote"] = []
             jie_data["combin_title"] = []
             jie_data["small_title"] = []
+            jie_data["small_title_quote"] = []
+            jie_data["all_title"] = []
+            jie_data["all_quote"] = []
             #jie_data["grade_all_title"] = []
             jie_data["all_title_tag"] = []
             now_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             jie_data["creatTime"] = now_time
         if i!=0:
-            if '引用' in new_data[i][1]:
+            if '引用' in new_data[i][1] and not re.match(r'^[一二三四五六七八九十—]', new_data[i][1]):
                 jyy = re.sub('[()（）]', '', new_data[i][1])
+            else:
+                jyy=''
             title,con,combin_title,title_index= get_small_title(new_data[i],new_data[i][0].split('节')[1])
             jie_data["chapter"] = name_zhang
             jie_data["section"]=new_data[i][0].split('节')[1]
@@ -353,7 +427,7 @@ def get_last_data(new_data):
             small_index_list = recog_small_title.rec_small_title(con[1:])
             s, small_title = recog_small_title.concat_cont(small_index_list, con[1:])
             #ts_list=title_smallTitle(title_index, small_index_list, title, small_title)
-            all_title_tag_list=all_title_tag(title, small_title)
+            all_title_tag_list,all_title=all_title_tag(title_index, small_index_list, title, small_title)
             pic, pic_ind, new_s = remove_picture(s)
             position, position_substr = get_position(new_s, new_data[i][0].split('节')[1])
             label_new_s = insert_label(position, new_s)
@@ -367,10 +441,18 @@ def get_last_data(new_data):
             jie_data['material_code'] = cod_sort_sim_list
             jie_data["quote"] = jyy
             jie_data["title"] = title
+            title_quote=get_quote(title)
+            jie_data["title_quote"] = title_quote
             jie_data["combin_title"] = combin_title
             jie_data["small_title"] = small_title
+            small_title_quote = get_quote(small_title)
+            jie_data["small_title_quote"] = small_title_quote
+            all_quote=get_all_quote(jyy, title_quote, small_title_quote)
+            #all_quote=list(set(all_quote))
+            jie_data["all_quote"] = all_quote
             #jie_data["grade_all_title"] = ts_list
             jie_data["all_title_tag"] = all_title_tag_list
+            jie_data["all_title"] = all_title
             now_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             jie_data["creatTime"] = now_time
 
@@ -388,12 +470,12 @@ def get_result_data(zhang_list,l,processStatus):
         t["updateTime"] =updateTime
         t["creater"] = 'admin'
         t["modifiedName"] = 'admin'
-        t["dataStatus"] = '活动'
+        t["dataStatus"] = zhang_list[0]['dataStatus']
         t["versionNumber"] = l
         t["processStatus"] = processStatus
         t["desc"] = zhang_list[0]['desc']
         t["source"] = zhang_list[0]['source']
-        t["top"] = zhang_list[0]['top']
+        t["top"] = ''
         t["unfreezReason"] = ''
         t["modifiedReason"] = ''
         new_zhang_list.append(t)
@@ -409,7 +491,6 @@ def load_data2es(article_list):
         try:
             base_url = "http://localhost:9200/" + "material" + "/" + "_doc" + "/"
             response = requests.post(base_url, headers={"Content-Type": "application/json"}, data=data.encode())
-            #print(response)
         except:
             print("失败")
 
@@ -423,102 +504,6 @@ if __name__ == "__main__":
     #load_data2es(zhang_list)
 
 
-'''
-PUT material
-{
-  "mappings": {
-    "properties": {
-      "chapter": {
-        "type": "text",
-        "analyzer": "ik_max_word",
-        "fields": {
-          "zhang": { 
-            "type":  "keyword"
-          }
-        }
-      },
-      "section": {
-        "type": "text",
-        "analyzer": "ik_max_word",
-        "fields": {
-          "jie": { 
-            "type":  "keyword"
-          }
-        }
-      },
-      "desc": {
-        "type": "text"
-      },
-      " source": {
-        "type": "text"
-      },
-      " top": {
-        "type": "text"
-      },
-      "content": {
-        "type": "text",
-        "analyzer": "ik_max_word"
-      },
-      "picture": {
-        "type": "text"
-      },
-      "material_name": {
-        "type": "keyword"
-      },
-      "material_code": {
-        "type": "keyword"
-      },
-      "quote": {
-        "type": "text",
-        "fields": {
-          "jty": { 
-            "type":  "keyword"
-          }
-        }
-      },
-      "title": {
-        "type": "keyword"
-      },
-      "combin_title": {
-        "type": "keyword"
-      },
-      "small_title": {
-        "type": "keyword"
-      },
-      "creatTime": {
-        "type": "date",
-        "format":"yyyy-MM-dd HH:mm:ss"
-      },
-      "creater": {
-        "type": "text"
-      },
-      "versionNumber": {
-        "type": "integer"
-      },
-      "modifiedName": {
-        "type": "text"
-      },
-      "updateTime": {
-        "type": "date",
-        "format":"yyyy-MM-dd HH:mm:ss"
-      },
-      "dataStatus": {
-        "type": "text"
-      },
-      "processStatus": {
-        "type": "text"
-      },
-      "unfreeReason":{
-        "type": "text"
-      },
-      "modifiedReason":{
-        "type": "text"
-      } 
-      }
-    }
-  }
-
-'''
 '''
 POST _analyze
 {

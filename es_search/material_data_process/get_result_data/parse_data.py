@@ -19,33 +19,3 @@ if __name__ == "__main__":
     url='http://www.fastmdm.infoyb.com/mdm/rest/api/materialInfo'
     request_data(url,token)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-'''
-import json
-import requests
-
-def get_td():
-    url = "http://www.fastmdm.infoyb.com/mdm/rest/api/materialInfo"
-    token = {"token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbiI6IjhhOGFiMGIyNDZkYzgxMTIwMTQ2ZGM4MTgxOTUwMDUyIn0.fz4rrq4wsTc2mg0E-PmyntyNqcz8Yox8RTmsrBg2zYg"}
-    res = requests.get(url=url, headers=token)
-    res1 = res.content.decode()
-    connect = json.loads(res1)
-    print(connect)
-
-
-if __name__ == '__main__':
-    get_td()
-    '''
