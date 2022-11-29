@@ -15,10 +15,10 @@ import base64
 import re
 import tqdm
 
-import material_data_process.get_result_data.comput_similarity as ed
-from material_data_process.get_result_data import recog_small_title
-from material_data_process.get_result_data.entity_label import get_position
-from material_data_process.get_result_data.kmp import insert_label
+import comput_similarity as ed
+import recog_small_title
+from entity_label import get_position
+from kmp import insert_label
 
 
 def get_picture(document: Document, paragraph: Paragraph):
@@ -172,8 +172,8 @@ def get_material_catg():
     """
         得到物料名称和代码对应数据
         """
-    file = '..//material_data_process//get_result_data//data//物料类别数据//物料类别.xls'
-    #file = './/data//物料类别数据//物料类别.xls'
+    #file = '/usr/local/webserver/zhishiku-python/es_search/material_data_process/get_result_data/data/Material_Category_Data/material_category.xls'
+    file = '..//get_result_data//data//Material_Category_Data//material_category.xls'
     bms_all_data, big_category_data, mid_category_data, small_category_data = ed.get_category_data(file)
     bms_data, bms_code = ed.get_data_dic(big_category_data, mid_category_data, small_category_data)
     return bms_data,bms_code
@@ -341,9 +341,11 @@ def get_quote(title):
     for t in title:
         if '引用' in t:
             q = t.split('引用')[1][:-1]
-            q=q[:-5]+'—'+q[-4:]
-            if q not in all_q:
-                all_q.append(q)
+            q_list=q.split('、')
+            for q_ in q_list:
+                q_=q_[:-5]+'—'+q_[-4:]
+                if q_ not in all_q:
+                    all_q.append(q_)
         else:
             if '(' in t or '（' in t:
                 #if re.match(r'[(（][/a-zA-Z0-9][)）]', t):
@@ -351,10 +353,12 @@ def get_quote(title):
                 p = re.compile(r'[（(](.*?)[）)]', re.S) #匹配（）内内容，加?，最小匹配
                 t=re.findall(p,t)
                 q=t[0]
-                if q[-4:].isdigit():
-                    q = q[:-5] + '—' + q[-4:]
-                    if q not in all_q:
-                        all_q.append(q)
+                q_list = q.split('、')
+                for q_ in q_list:
+                    if q_[-4:].isdigit():
+                        q_ = q_[:-5] + '—' + q_[-4:]
+                        if q_ not in all_q:
+                            all_q.append(q_)
             else:
                 continue
     all_q=list(set(all_q))
@@ -364,12 +368,14 @@ def get_all_quote(jyy:str,title_quote,small_title_quote):
         if s in title_quote:
             small_title_quote.remove(s)
     title_quote.extend(small_title_quote)
-    if jyy in title_quote:
-        title_quote.remove(jyy)
-        title_quote.insert(0,jyy)
-    else:
-        if jyy!='':
-            title_quote.insert(0, jyy)
+    jyy_list=jyy.split('、')
+    for jyy_ in jyy_list:
+        if jyy_ in title_quote:
+            title_quote.remove(jyy_)
+            title_quote.insert(0,jyy_)
+        else:
+            if jyy_!='':
+                title_quote.insert(0, jyy)
     title_quote=list(set(title_quote))
     return title_quote
 
@@ -413,6 +419,8 @@ def get_last_data(new_data):
             jie_data["all_title_tag"] = []
             now_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             jie_data["creatTime"] = now_time
+            jie_data["order"] = i
+            jie_data["combin_material_name_code"]=[]
         if i!=0:
             if '引用' in new_data[i][1] and not re.match(r'^[一二三四五六七八九十—]', new_data[i][1]):
                 jyy = re.sub('[()（）]', '', new_data[i][1])
@@ -453,8 +461,11 @@ def get_last_data(new_data):
             #jie_data["grade_all_title"] = ts_list
             jie_data["all_title_tag"] = all_title_tag_list
             jie_data["all_title"] = all_title
-            now_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            jie_data["creatTime"] = now_time
+            #now_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            #jie_data["creatTime"] = now_time
+            jie_data["order"] = i
+            jie_data["combin_material_name_code"] = [cod_sort_sim_list[i] + '_' + mat_sort_sim_list[i] for i in range(len(mat_sort_sim_list))]
+
 
         zhang_list.append(jie_data)
 
@@ -466,6 +477,8 @@ def get_result_data(zhang_list,l,processStatus):
         """
     new_zhang_list = []
     for t in zhang_list:
+        now_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        t["creatTime"] = now_time
         updateTime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         t["updateTime"] =updateTime
         t["creater"] = 'admin'
@@ -489,25 +502,12 @@ def load_data2es(article_list):
     for i in tqdm.tqdm(article_list):
         data = json.dumps(i)
         try:
-            base_url = "http://localhost:9200/" + "material" + "/" + "_doc" + "/"
-            response = requests.post(base_url, headers={"Content-Type": "application/json"}, data=data.encode())
+            base_url = "http://123.56.240.89:9280/" + "material" + "/" + "_doc" + "/"
+            response = requests.post(base_url, headers={"Content-Type": "application/json","authorization":"Basic ZWxhc3RpYzppbmZveWIyMDE1"}, data=data.encode())
         except:
             print("失败")
 
-if __name__ == "__main__":
-    path="D://work//data//example_data//第一章//"
-    file_name=get_files(path)
-    locations=process_flies(path,file_name)
-    all_data_list,all_data_list_index=get_data_list(locations)
-    new_data=get_data_patition(all_data_list, all_data_list_index)
-    zhang_list=get_last_data(new_data)
-    #load_data2es(zhang_list)
 
 
-'''
-POST _analyze
-{
-  "analyzer": "ik_max_word",
-  "text": "target="p"_blank"
-}
-'''
+
+
