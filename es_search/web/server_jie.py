@@ -1,11 +1,12 @@
-import io
+# -- coding: utf-8 --
 
+import io
 from flask import request, Flask, jsonify
-from gevent import pywsgi
+#from gevent import pywsgi
 from flask_cors import *
 import logging
 from search.Searchengine_jie import Searchengine
-from material_data_process.get_result_data.get_jie_data2 import *
+from material_data_process.get_result_data.get_jie_data import *
 
 server = Flask(__name__)
 log = logging.getLogger('monitor.default')
@@ -23,7 +24,7 @@ def search():
     pageSize = json_info['pageSize']
     searchValue=json_info['searchValue']
     if searchValue != '':
-        searchValue=searchengine.strip_stopword(searchValue)
+        #searchValue=searchengine.strip_stopword(searchValue)
         response = searchengine.search(searchValue)
         n=len(response)
         slice_response = searchengine.data_slice(response, pageNumber, pageSize)
@@ -37,6 +38,25 @@ def search():
         reponsedic['data'] = response
         reponsedic['number'] = n
 
+    return jsonify(reponsedic)
+
+@server.route("/material_name", methods=["GET", "POST"],endpoint="material_name")
+def material_name_search():
+    reponsedic = {}
+    json_info = request.json
+    material_name = json_info['material_name']
+    response = searchengine.search_material_name(material_name)
+    reponsedic['data'] = response
+    return jsonify(reponsedic)
+
+
+@server.route("/material_code", methods=["GET", "POST"],endpoint="material_code")
+def material_code_search():
+    reponsedic = {}
+    json_info = request.json
+    material_code = json_info['material_code']
+    response = searchengine.search_material_code(material_code)
+    reponsedic['data'] = response
     return jsonify(reponsedic)
 
 @server.route("/details", methods=["GET", "POST"],endpoint="details")
@@ -60,7 +80,6 @@ def upload_files():
     reponsedic = {}
     uploaded_files = request.files.getlist('files')
     uploaded_files=sort_files(uploaded_files)
-    print(uploaded_files)
     word_file_list=[]
     for file in uploaded_files:
         f = io.BytesIO(file.read())
@@ -92,6 +111,12 @@ def download_files_data():
     data[0]['combin_title'] = [data[0]['section'] + w for w in new_title_list]
     content_text=searchengine.updete_content(data[0]['content'])
     data[0]['content_text'] = content_text
+
+    material_code=[mc.split('_')[0] for mc in data[0]['combin_material_name_code']]
+    material_name = [mc.split('_')[1] for mc in data[0]['combin_material_name_code']]
+    data[0]['material_code'] = material_code
+    data[0]['material_name'] = material_name
+
     article_list = searchengine.update_es_data(data[0]['section'])
     if len(article_list)==0:
         new_data = get_result_data(data,1,'已完成')
@@ -99,7 +124,7 @@ def download_files_data():
         reponsedic['data'] = new_data
     else:
         if article_list[0]['_source']['processStatus']=='待提交':
-            res_update=searchengine.data2es_submit(article_list[0],data,len(article_list))
+            res_update=searchengine.data2es_submit_save(article_list[0],data,versionNumber=len(article_list),processStatus='已完成')
         else:
             new_data = get_result_data(data,len(article_list)+1,'已完成')
             load_data2es(new_data)
@@ -124,6 +149,12 @@ def saveDraft():
     data[0]['combin_title'] = [data[0]['section'] + w for w in new_title_list]
     content_text = searchengine.updete_content(data[0]['content'])
     data[0]['content_text'] = content_text
+
+    material_code = [mc.split('_')[0] for mc in data[0]['combin_material_name_code']]
+    material_name = [mc.split('_')[1] for mc in data[0]['combin_material_name_code']]
+    data[0]['material_code'] = material_code
+    data[0]['material_name'] = material_name
+
     article_list = searchengine.update_es_data(data[0]['section'])
     if len(article_list) == 0:
         new_data=get_result_data(data,0,'待提交')
@@ -131,7 +162,7 @@ def saveDraft():
         reponsedic['data'] = new_data
     else:
         if article_list[0]['_source']['processStatus']=='待提交':
-            new_data = searchengine.data2es_save(article_list[0], data)
+            new_data = searchengine.data2es_submit_save(article_list[0],data,versionNumber=0,processStatus='待提交')
         else:
             new_data = get_result_data(data,0,'待提交')
             load_data2es(new_data)
@@ -142,45 +173,31 @@ def saveDraft():
 def manage_search():
     reponsedic = {}
     json_info = request.json
-    print(json_info)
     pageNumber = json_info['pageNumber']
     pageSize = json_info['pageSize']
     section = json_info['section']
     if section!="":
-        response = searchengine.search(section)
+        response = searchengine.manage_search(section)
         new_response=searchengine.manageSearch_data(response)
-        print(new_response)
         n = len(response)
         slice_response = searchengine.data_slice(new_response, pageNumber, pageSize)
         reponsedic['data'] = slice_response
         reponsedic['number'] = n
 
-    if section == "":
+    if section == '':
         response = searchengine.search_null_manage()
-        new_response = searchengine.manageSearch_data(response)
         n = len(response)
-        response = searchengine.data_slice(new_response, pageNumber, pageSize)
+        response = searchengine.data_slice(response, pageNumber, pageSize)
         reponsedic['data'] = response
         reponsedic['number'] = n
 
     return jsonify(reponsedic)
-'''
-@server.route("/edit", methods=["POST", "GET"],endpoint="edit")
-def manage_edit():
-    reponsedic = {}
-    json_info = request.json
-    print(json_info)
-    section = json_info['section']
-    response = searchengine.search(section)
-    reponsedic['data'] = response
-    return jsonify(reponsedic)
-    '''
+
 @server.route("/edit", methods=["POST", "GET"],endpoint="edit")
 def manage_edit():
     reponsedic = {}
     json_info = request.json
     chapter = json_info['chapter']
-    print(chapter)
     response = searchengine.search_chapter(chapter)
     reponsedic['data'] = response
     return jsonify(reponsedic)
@@ -188,7 +205,6 @@ def manage_edit():
 @server.route("/frozen", methods=["POST", "GET"],endpoint="frozen")
 def manage_frozen():
     json_info = request.json
-    print(json_info)
     section = json_info['section']
     unfreezReason = json_info['unfreezReason']
     response = searchengine.update_es_data(section)
@@ -199,7 +215,6 @@ def manage_frozen():
 @server.route("/unfrozen", methods=["POST", "GET"],endpoint="unfrozen")
 def manage_unfrozen():
     json_info = request.json
-    print(json_info)
     section = json_info['section']
     unfreezReason = json_info['unfreezReason']
     response = searchengine.update_es_data(section)
@@ -209,7 +224,6 @@ def manage_unfrozen():
 @server.route("/batch_frozen", methods=["POST", "GET"],endpoint="batch_frozen")
 def manage_batch_frozen():
     json_info = request.json
-    print(json_info)
     sections = json_info['sections']
     unfreezReason = json_info['unfreezReason']
     sections=sections.split(',')
@@ -219,7 +233,6 @@ def manage_batch_frozen():
 @server.route("/batch_unfrozen", methods=["POST", "GET"],endpoint="batch_unfrozen")
 def manage_batch_unfrozen():
     json_info = request.json
-    print(json_info)
     sections = json_info['sections']
     unfreezReason = json_info['unfreezReason']
     sections = sections.split(',')
@@ -227,20 +240,18 @@ def manage_batch_unfrozen():
     return response
 
 @server.route("/manageDetails", methods=["GET", "POST"],endpoint="manageDetails")
-def search():
+def manageDetails():
     reponsedic = {}
     json_info = request.json
-    print(json_info)
     searchValue=json_info['section']
     response=searchengine.search(searchValue)
     reponsedic['details']=response
     return jsonify(reponsedic)
 
 @server.route("/histVersion", methods=["GET", "POST"],endpoint="histVersion")
-def search():
+def histVersion():
     reponsedic = {}
     json_info = request.json
-    print(json_info)
     searchValue=json_info['section']
     response=searchengine.update_es_data(searchValue)
     new_response=searchengine.history_V(response)
@@ -251,12 +262,20 @@ def search():
 @server.route("/delete", methods=["GET", "POST"],endpoint="delete")
 def delete_data():
     json_info = request.json
-    print(json_info)
     section = json_info['section']
     versionNumber = json_info['versionNumber']
     searchengine.delete(section, versionNumber)
 
     return 'success'
+
+@server.route("/versionNumber", methods=["GET", "POST"],endpoint="versionNumber")
+def batch_delete_data():
+    json_info = request.json
+    section = json_info['section']
+    article_list=searchengine.delete_search(section)
+    article_list = searchengine.manageSearch_data(article_list)
+    versionNumber_list=[art['versionNumber'] for art in article_list]
+    return versionNumber_list
 
 if __name__ == "__main__":
     server.config['JSON_AS_ASCII'] = False
