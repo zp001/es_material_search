@@ -1,5 +1,6 @@
-import datetime
-from material_data_process.get_result_data.get_jie_data2 import *
+# -- coding: utf-8 --
+#import datetime
+from material_data_process.get_result_data.get_jie_data import *
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 import re
@@ -7,7 +8,8 @@ from material_data_process.get_result_data.select_paragraph import match_keyword
 
 class Searchengine:
     def __init__(self):
-        self.es = Elasticsearch(hosts="http://localhost:9200",
+        self.es = Elasticsearch(hosts=['123.56.240.89:9280'],
+                                http_auth=('elastic', 'infoyb2015'),
                                 sniff_on_start=True,
                                 sniff_on_connection_fail=True,
                                 sniffer_timeout=60)
@@ -24,20 +26,19 @@ class Searchengine:
             if len(title_list)==0:
                 content_list1 = Searchengine.title_search(self, query_content)
                 content_list = Searchengine.get_new_article_list(self, content_list1)
+                content_list = Searchengine.filter_results(self, content_list)
                 return content_list
             else:
                 title_list = Searchengine.get_new_article_list(self, title_list)
-                dic_path='..//material_data_process//get_result_data//data//字典//word_dic.txt'
+                dic_path='..//material_data_process//get_result_data//data//dict//word_dic.txt'
                 seg=jieba_seg(keywords,dic_path)
                 key_sec=seg.split('/')[0]
                 title_re_cont = match_keyword(key_sec, title_list[0]['content_text'])
-                #title_re_cont = Searchengine.highlight_data(self, title_re_cont)
                 title_list[0]['highlight_content'] = title_re_cont
                 return title_list
         else:
             sec_list=Searchengine.get_new_article_list(self,sec_list)
             sec_re_cont = match_keyword(keywords, sec_list[0]['content_text'])
-            #sec_re_cont=Searchengine.highlight_data(self,sec_re_cont)
             sec_list[0]['highlight_content'] = sec_re_cont
             return sec_list
 
@@ -73,16 +74,43 @@ class Searchengine:
         new_content_s = '|'.join(l for l in new_content)
         return new_content_s
 
+    def filter_results(self,article_list):
+        new_article_list=[]
+        for article in article_list:
+            l=[a['section'] for a in new_article_list]
+            if article['section'] not in l:
+                new_article_list.append(article)
+            else:
+                ind=l.index(article['section'])
+                if article['versionNumber']>new_article_list[ind]['versionNumber']:
+                    new_article_list.append(article)
+                else:
+                    continue
+
+        return new_article_list
+
+    def sec_filter_results(self,article_list):
+        if len(article_list)!=1:
+            for i in range(1,len(article_list)):
+                if article_list[i]['versionNumber']>article_list[0]['versionNumber']:
+                    article_list[i],article_list[0]=article_list[0],article_list[i]
+                else:
+                    continue
+            return article_list[:1]
+        else:
+            return article_list
+
     def search(self, keywords):
         query_sec={
-            "query":
-                       {"term": {"section.jie": "{}".format(keywords)}
-                        },
-            "sort": [{"versionNumber": {'order': "desc"}}],
-            "collapse": {
-                "field": "section.jie"
+            "query":{"bool":{"must":
+                       [{"term": {"section.jie": "{}".format(keywords)}
+                        }],
+                             "filter": {"term": {"dataStatus.dataStatu": "活动"}}
             }
-            }
+            },
+            "sort": [{"versionNumber.versionNo": {'order': "desc"}}],
+            "collapse": {"field": "section.jie"}
+        }
 
         query_title = {
             "query": {
@@ -92,29 +120,28 @@ class Searchengine:
                             "combin_title": {
                                 "value": keywords
                             }
-                        }}
-                    ]
+                        }
+                        }
+                    ],
+                    "filter": {"term": {"dataStatus.dataStatu": "活动"}}
                 }
             },
-            "sort": [{"versionNumber": {'order': "desc"}}],
-            "collapse": {
-                "field": "section.jie"
-            }
+            "sort": [{"versionNumber.versionNo": {'order': "desc"}}],
+            "collapse": {"field": "section.jie"}
         }
 
         #boost设置字段权重
         query_content = {
-            "size": 10,
+            "size": 20,
             "query": {
                 "bool": {
                     "should": [
                         {"match": {"section": "{}".format(keywords)}},
                         {"match": {"content_text": "{}".format(keywords)}}
-                    ]
+                    ],
+                    "filter": {"term": {"dataStatus.dataStatu": "活动"}}
                 }
             },
-            #"sort": [{"versionNumber": {'order': "desc"}}],
-            #"collapse": {"field": "section.jie"},
             "highlight": {
                 "fields": {
                     "content_text": {}
@@ -127,23 +154,76 @@ class Searchengine:
         }
 
         article_list=Searchengine.judge_search(self,keywords, query_sec,query_title,query_content)
+
         return article_list
 
     def search_null(self):
         query = {
-            "size": 10000,
+            "size": 5000,
             "query": {
-                "match_all": {}
-            },
-            "sort": [{"versionNumber": {'order': "desc"}}],
-            "collapse": {"field": "section.jie"}
+                "bool": {
+                    "must": [
+                        {"match_all": {}}
+                    ],
+                    "filter": {"term": {"dataStatus.dataStatu": "活动"}}
+            }
+        },
+        "sort": [{"versionNumber.versionNo": {'order': "desc"}}],
+        "collapse": {"field": "section.jie"}
         }
         article_list = Searchengine.title_search(self, query)
         article_list_null = Searchengine.get_new_article_list(self, article_list)
-        for c in article_list_null:
-            if c['dataStatus']=='冻结':
-                del c
+
         return article_list_null
+
+    def manage_sec(self,keywords):
+        query_sec = {
+            "query":
+                {"term": {"section.jie": "{}".format(keywords)}
+                 },
+            "sort": [{"section.jie": {'order': "desc"}}]
+        }
+        article_list = Searchengine.title_search(self, query_sec)
+        return article_list
+    def manage_sec_text(self,keywords):
+        query_sec_text = {
+            "size": 10,
+            "query": {
+                "bool": {
+                    "should": [
+                        {"match": {"section": "{}".format(keywords)}}
+                    ]
+                }
+            }
+        }
+        article_list = Searchengine.title_search(self, query_sec_text)
+        return article_list
+
+    def manage_search(self, keywords):
+        article_list=Searchengine.manage_sec(self,keywords)
+        if len(article_list)!=0:
+            return article_list
+        else:
+            article_list = Searchengine.manage_sec_text(self, keywords)
+            return article_list
+
+    def manageSearch_data(self,response):
+        new_response = []
+        for d in response:
+            dic = {}
+            dic['chapter'] = d['_source']['chapter'].strip('\n')
+            dic['section'] = d['_source']['section'].strip('\n')
+            dic['all_quote'] = d['_source']['all_quote']
+            dic['dataStatus'] = d['_source']['dataStatus'].strip('\n')
+            dic['versionNumber'] = d['_source']['versionNumber']
+            dic['processStatus'] = d['_source']['processStatus']
+            dic['creatTime'] = d['_source']['creatTime']
+            dic['creater'] = d['_source']['creater']
+            dic['material_name'] = d['_source']['material_name']
+            dic['material_code'] = d['_source']['material_code']
+            dic['combin_material_name_code'] = d['_source']['combin_material_name_code']
+            new_response.append(dic)
+        return new_response
 
     def search_null_manage(self):
         query = {
@@ -153,25 +233,36 @@ class Searchengine:
             }
         }
         article_list = Searchengine.title_search(self, query)
-        article_list_null = Searchengine.get_new_article_list(self, article_list)
+        article_list_null = Searchengine.manageSearch_data(self, article_list)
         return article_list_null
+
+    def sort_chapter_result(self,article_list):
+        n=len(article_list)
+        for i in range(n):
+            for j in range(1, n - i):
+                if article_list[j - 1]['order'] > article_list[j]['order']:
+                    article_list[j - 1], article_list[j] = article_list[j], article_list[j - 1]
+        return article_list
 
     def search_chapter(self, keywords):
         query_chapter = {
-            "query":
-                {"term": {"chapter.zhang": "{}".format(keywords)}
-                 },
-            "sort": [{"versionNumber": {'order': "desc"}}],
-            "collapse": {
-                "field": "section.jie"
-            }
+            "query": {"bool": {"must":
+                                   [{"term": {"chapter.zhang": "{}".format(keywords)}
+                                     }],
+                               "filter": {"term": {"dataStatus.dataStatu": "活动"}}
+                               }
+                      },
+            "sort": [{"versionNumber.versionNo": {'order': "desc"}}],
+            "collapse": {"field": "section.jie"}
         }
 
         article_list=Searchengine.title_search(self,query_chapter)
         article_list = Searchengine.get_new_article_list(self, article_list)
+        article_list=Searchengine.sort_chapter_result(self, article_list)
+
         return article_list
 
-    def search_m(self,keywords):
+    def search_material_name(self,keywords):
         query_material_label={
             "query": {
                 "bool": {
@@ -181,29 +272,20 @@ class Searchengine:
                                 "value": keywords
                             }
                         }}
-                    ]
+                    ],
+                    "filter": {"term": {"dataStatus.dataStatu": "活动"}}
                 }
             },
-            "sort": [{"versionNumber": {'order': "desc"}}],
-            "collapse": {
-                "field": "section.jie"
-            }
+            "sort": [{"versionNumber.versionNo": {'order': "desc"}}],
+            "collapse": {"field": "section.jie"}
         }
 
         article_list=Searchengine.title_search(self, query_material_label)
-        if len(article_list)!=0:
-            new_article_list=Searchengine.get_new_article_list(self,article_list)
-            return new_article_list
+        new_article_list=Searchengine.get_new_article_list(self,article_list)
 
-        else:
-            search_engine = Searchengine()
-            keywords = search_engine.strip_stopword(keywords)
-            new_article_list = search_engine.search(keywords)
-            #article_list = Searchengine_materialcate.title_search(self, query_content)
-            #new_article_list = Searchengine_materialcate.get_new_article_list(self,article_list)
-            return new_article_list
+        return new_article_list
 
-    def search_c(self,keywords):
+    def search_material_code(self,keywords):
         query_code_label={
             "query": {
                 "bool": {
@@ -213,36 +295,17 @@ class Searchengine:
                                 "value": keywords
                             }
                         }}
-                    ]
+                    ],
+                    "filter": {"term": {"dataStatus.dataStatu": "活动"}}
                 }
             },
-            "sort": [{"versionNumber": {'order': "desc"}}],
-            "collapse": {
-                "field": "section.jie"
-            }
+            "sort": [{"versionNumber.versionNo": {'order': "desc"}}],
+            "collapse": {"field": "section.jie"}
         }
-        query_content = {
-            "size": 20,
-            "query": {
-                "bool": {
-                    "should": [
-                        {"match": {"content": "{}".format(keywords)}}
-                    ]
-                }
-            },
-            "sort": [{"versionNumber": {'order': "desc"}}],
-            "collapse": {
-                "field": "section.jie"
-            }
-        }
+
         article_list=Searchengine.title_search(self, query_code_label)
-        if len(article_list)!=0:
-            new_article_list=Searchengine.get_new_article_list(self,article_list)
-            return new_article_list
-        else:
-            article_list = Searchengine.title_search(self, query_content)
-            new_article_list = Searchengine.get_new_article_list(self,article_list)
-            return new_article_list
+        new_article_list=Searchengine.get_new_article_list(self,article_list)
+        return new_article_list
 
     def get_new_article_list(self,article_list):
         new_article_list = []
@@ -273,6 +336,8 @@ class Searchengine:
             d['small_title_quote'] = cont['_source']['small_title_quote']
             d['all_quote'] = cont['_source']['all_quote']
             d['all_title'] = cont['_source']['all_title']
+            d['order'] = cont['_source']['order']
+            d['combin_material_name_code'] = cont['_source']['combin_material_name_code']
             #d['all_title_tag'] = cont['_source']['all_title_tag']
 
             if 'highlight' in cont:
@@ -310,28 +375,9 @@ class Searchengine:
                 input = input.replace(w, '')
         return input
 
-    def manageSearch_data(self,response):
-        new_response = []
-        for d in response:
-            dic = {}
-            dic['chapter'] = d['chapter']
-            dic['section'] = d['section']
-            dic['all_quote'] = d['all_quote']
-            dic['dataStatus'] = d['dataStatus']
-            dic['versionNumber'] = d['versionNumber']
-            dic['processStatus'] = d['processStatus']
-            dic['creatTime'] = d['creatTime']
-            dic['creater'] = d['creater']
-            new_response.append(dic)
-        return new_response
-
     def filter_versionNo(self,new_response,versionNO):
-        result_response=[]
-        for d in new_response:
-            if d['versionNumber']==versionNO:
-                result_response.append(d)
+        result_response=[d for d in new_response if d['versionNumber']==versionNO]
         return result_response
-
 
     def update_es_data(self, keyword):
         query = {"query":
@@ -354,27 +400,7 @@ class Searchengine:
 
         return article_list
 
-    def data2es_save(self,article_list,data):
-        content_text = Searchengine.updete_content(self,data[0]['content'])
-        title_index, small_title_index, title_list, small_title_list = Searchengine.update_small_title(self,data[0]['all_title'])
-        new_title_list = Searchengine.get_combin_title(self,title_list)
-        combin_title = [data[0]['section'] + w for w in new_title_list]
-
-        title_quote = get_quote(title_list)
-        small_title_quote = get_quote(small_title_list)
-        all_quote = get_all_quote(data[0]['quote'], title_quote, small_title_quote)
-
-        res_update = self.es.update(index='material', id=article_list['_id'],
-                                    body={'doc':{'content': data[0]['content'], 'picture': data[0]['picture'],'all_title_tag':data[0]['all_title_tag'],
-                                                 'title':title_list,'small_title':small_title_list,'combin_title':combin_title,
-                                                  'content_text':content_text,'desc': data[0]['desc'], 'source': data[0]['source'],
-                                                  'dataStatus': data[0]['dataStatus'],'versionNumber':0,'all_title':data[0]['all_title'],
-                                                 'title_quote':title_quote,'small_title_quote':small_title_quote,'all_quote':all_quote,
-                                                    'processStatus':'待提交','updateTime':datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                                                  }})
-        return res_update
-
-    def data2es_submit(self,article_list,data,l):
+    def data2es_submit_save(self,article_list,data,versionNumber,processStatus):
         content_text = Searchengine.updete_content(self, data[0]['content'])
         title_index, small_title_index, title_list, small_title_list = Searchengine.update_small_title(self,data[0]['all_title'])
         new_title_list = Searchengine.get_combin_title(self, title_list)
@@ -384,13 +410,17 @@ class Searchengine:
         small_title_quote = get_quote(small_title_list)
         all_quote = get_all_quote(data[0]['quote'], title_quote, small_title_quote)
 
+        material_code = [mc.split('_')[0] for mc in data[0]['combin_material_name_code']]
+        material_name = [mc.split('_')[1] for mc in data[0]['combin_material_name_code']]
+
         res_update = self.es.update(index='material', id=article_list['_id'],
                                     body={'doc':{'content': data[0]['content'], 'picture': data[0]['picture'],'all_title_tag':data[0]['all_title_tag'],
-                                                 'title': title_list, 'small_title': small_title_list,'combin_title': combin_title,
+                                                 'title': title_list, 'small_title': small_title_list,'combin_title': combin_title,'section':data[0]['section'],
                                                   'content_text':content_text,'desc': data[0]['desc'], 'source': data[0]['source'],
-                                                  'dataStatus': data[0]['dataStatus'],'versionNumber':l,'all_title':data[0]['all_title'],
+                                                  'dataStatus': data[0]['dataStatus'],'versionNumber':versionNumber,'all_title':data[0]['all_title'],
                                                  'title_quote': title_quote, 'small_title_quote': small_title_quote,'all_quote': all_quote,
-                                                    'processStatus':'已完成','updateTime':datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                                 'material_code': material_code,'material_name': material_name,
+                                                    'processStatus':processStatus,'updateTime':datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                                   }})
         return res_update
 
@@ -420,7 +450,6 @@ class Searchengine:
                         'unfreezReason': unfreezReason
                     }
                 }
-
                 actions.append(action)
         bulk(self.es, actions)
         return 'success'
@@ -447,17 +476,18 @@ class Searchengine:
     def history_V(self, article_list):
         new_response = []
         for art in article_list:
-            dic = {}
-            dic['processStatus'] = art['_source']['processStatus']
-            dic['section'] = art['_source']['section']
-            dic['quote'] = art['_source']['quote']
-            dic['creater']=art['_source']['creater']
-            dic['creatTime'] = art['_source']['creatTime']
-            dic['versionNumber'] = art['_source']['versionNumber']
-            dic['dataStatus'] = art['_source']['dataStatus']
-            dic['modifiedName'] = art['_source']['modifiedName']
-            dic['updateTime'] = art['_source']['updateTime']
-            new_response.append(dic)
+            if art['_source']['versionNumber']!=0:
+                dic = {}
+                dic['processStatus'] = art['_source']['processStatus']
+                dic['section'] = art['_source']['section']
+                dic['quote'] = art['_source']['quote']
+                dic['creater']=art['_source']['creater']
+                dic['creatTime'] = art['_source']['creatTime']
+                dic['versionNumber'] = art['_source']['versionNumber']
+                dic['dataStatus'] = art['_source']['dataStatus']
+                dic['modifiedName'] = art['_source']['modifiedName']
+                dic['updateTime'] = art['_source']['updateTime']
+                new_response.append(dic)
 
         return new_response
 
@@ -502,14 +532,43 @@ class Searchengine:
         self.es.delete_by_query(index='material', body=query)
         return 'success'
 
+    def delete_search(self,keywords):
+        query_sec = {
+            "query":
+                {"term": {"section.jie": "{}".format(keywords)}
+                 },
+            "sort": [{"versionNumber.versionNo": {'order': "asc"}}]
+        }
+        article_list = Searchengine.title_search(self, query_sec)
+        return article_list
+
+    def combin_material_name_code(self, material_name, material_code):
+        for i in range(len(material_name)):
+            combin_name_code = material_code[i] + '_' + material_name[i]
+
+
 if __name__ == "__main__":
     search_engine = Searchengine()
-    str='液压支架是什么'
+    '''
+    str='液压支架有哪些用途'
     res = search_engine.search(str)
-    #new_response=search_engine.manageSearch_data(res)
+    print(res[0]['combin_title'])
     print(res[0]['section'])
-    article_list=search_engine.update_es_data('液压支架')
-    slice_data= search_engine.data_slice(res,1,5)
+    print(res[0]['dataStatus'])
+    print(res[0]['versionNumber'])
+    '''
+    '''
+    l=search_engine.search_null()
+    for i in range(len(l)):
+        print(l[i]['section'])
+        print(l[i]['dataStatus'])
+        print(l[i]['versionNumber'])
+        '''
+
+
+
+
+
 
 
 
