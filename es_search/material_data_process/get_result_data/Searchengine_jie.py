@@ -30,8 +30,8 @@ class Searchengine:
                 return content_list
             else:
                 title_list = Searchengine.get_new_article_list(self, title_list)
-                dic_path='/usr/local/webserver/zhishiku-python/es_search/material_data_process/get_result_data/data/dict/word_dic.txt'
-                #dic_path = '..//get_result_data//data//dict//word_dic.txt'
+                #dic_path='/usr/local/webserver/zhishiku-python/es_search/material_data_process/get_result_data/data/dict/word_dic.txt'
+                dic_path = '..//get_result_data//data//dict//word_dic.txt'
                 seg=jieba_seg(keywords,dic_path)
                 key_sec=seg.split('/')[0]
                 title_re_cont = match_keyword(key_sec, title_list[0]['content_text'])
@@ -101,6 +101,27 @@ class Searchengine:
             return article_list[:1]
         else:
             return article_list
+
+    def judge_search_details(self,keywords,query_sec):
+        sec_list = Searchengine.title_search(self, query_sec)
+        sec_list = Searchengine.get_new_article_list(self, sec_list)
+        sec_re_cont = match_keyword(keywords, sec_list[0]['content_text'])
+        sec_list[0]['highlight_content'] = sec_re_cont
+        return sec_list
+
+    def search_details(self, keywords,versionNumber):
+        query_sec={
+            "query":{"bool":{"must":
+                       [{"term": {"section.jie": "{}".format(keywords)}},
+                        {"term": {"versionNumber.versionNo": "{}".format(versionNumber)}}
+                        ]
+            }
+            }
+        }
+
+        article_list=Searchengine.judge_search_details(self,keywords, query_sec)
+
+        return article_list
 
     def search(self, keywords):
         query_sec={
@@ -175,6 +196,12 @@ class Searchengine:
         }
         article_list = Searchengine.title_search(self, query)
         article_list_null = Searchengine.get_new_article_list(self, article_list)
+        article_list_null=[d for d in article_list_null if d['versionNumber']!=0]
+        n = len(article_list_null)
+        for i in range(n):
+            for j in range(1, n - i):
+                if article_list_null[j - 1]['creatTime'] < article_list_null[j]['creatTime']:
+                    article_list_null[j - 1], article_list_null[j] = article_list_null[j], article_list_null[j - 1]
 
         return article_list_null
 
@@ -234,13 +261,39 @@ class Searchengine:
         query = {
             "size": 10000,
             "query": {
-                "match_all": {}
+                "match_all": {},
+                "range": {
+                    "versionNumber": {
+                        "gt": 0
+                    }
+                }
+
             },
-            "sort": [{"versionNumber.versionNo": {'order': "desc"}}],
+            #"sort": [{"versionNumber.versionNo": {'order': "desc"}}],
+            "sort": [{"updateTime": {'order': "desc"}}],
             "collapse": {"field": "section.jie"}
         }
-        article_list = Searchengine.title_search(self, query)
-        article_list_null = Searchengine.manageSearch_data(self, article_list)
+
+        query_ver = {
+            "query":
+                {"term": {"versionNumber.versionNo": "0"}
+                 },
+            "sort": [{"updateTime": {'order': "desc"}}],
+        }
+
+        article_list1 = Searchengine.title_search(self, query)
+        article_list_null = Searchengine.manageSearch_data(self, article_list1)
+
+        article_list2 = Searchengine.title_search(self, query_ver)
+        article_list_null2 = Searchengine.manageSearch_data(self, article_list2)
+
+        article_list_null.extend(article_list_null2)
+        n = len(article_list_null)
+        for i in range(n):
+            for j in range(1, n - i):
+                if article_list_null[j - 1]['creatTime'] < article_list_null[j]['creatTime']:
+                    article_list_null[j - 1],article_list_null[j]=article_list_null[j],article_list_null[j - 1]
+
         return article_list_null
 
     def sort_chapter_result(self,article_list):
