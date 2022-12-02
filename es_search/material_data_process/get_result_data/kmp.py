@@ -186,10 +186,3 @@ def insert_label(position,s):
     s=''.join(s)
     return s
 
-if __name__ == "__main__":
-    main_str = '石棉制动制品和石棉水泥制品以及石棉和石棉'
-    sup_list = ['石棉制动制品','石棉水泥制品','石棉','和']
-    section = '液压支架'
-    position,position_substr=get_all_entity_position(sup_list, main_str, section)
-    label_main_str=insert_label(position, main_str)
-    print(label_main_str)

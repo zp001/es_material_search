@@ -4,8 +4,6 @@ import pandas as pd
 import jieba
 import re
 
-from elasticsearch import Elasticsearch
-es = Elasticsearch('http://localhost:9200')
 
 def segment_data(data):
     """
@@ -267,16 +265,7 @@ def jieba_seg_word(str):
     seg_list = list(seg_list)
     return seg_list
 
-if __name__ == "__main__":
-    file='.//data//物料类别数据//物料类别.xls'
-    data,big_category_data,mid_category_data,small_category_data=get_category_data(file)
-    all_data,all_code=get_data_dic(big_category_data,mid_category_data,small_category_data)
-    #word_sim_dic=match_data("截止阀",small_category_data)
-    #print(word_sim_dic)
 
-    mat_sort_sim_list,cod_sort_sim_list=match_all_data("液压支架", all_data,all_code)
-    print(mat_sort_sim_list)
-    print(cod_sort_sim_list)
 
 
 

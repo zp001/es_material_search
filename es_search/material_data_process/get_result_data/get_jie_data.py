@@ -14,6 +14,7 @@ from PIL import Image
 import base64
 import re
 import tqdm
+#from numba import jit
 
 import comput_similarity as ed
 import recog_small_title
@@ -136,9 +137,10 @@ def get_data_list(locations):
         file = docx.Document(locations[i])
         data_list = get_content(file)
         data_list=[x for x in data_list if x!='']
-        all_data_list.append(data_list)
+        #all_data_list.append(data_list)
+        all_data_list.extend(data_list)
 
-    all_data_list=[i for j in all_data_list for i in j]
+    #all_data_list=[i for j in all_data_list for i in j]
     for i in range(len(all_data_list)):
         if re.match(r'^[第][一二三四五六七八九十—]+节',all_data_list[i]):
             all_data_list_index.append(i)
@@ -148,7 +150,8 @@ def remove_pian(l):
     """
         去掉每章开头前面的描述
         """
-    if re.match(r'^[第][一二三四五六七八九十—]+篇', l[0][0]):
+    #if re.match(r'^[第][一二三四五六七八九十—]+篇', l[0][0]):
+    if re.match(r'^[第][\u4e00-\u9fa5]+篇', l[0][0]):
         l=l[1:]
     return l
 
@@ -491,6 +494,7 @@ def get_result_data(zhang_list,l,processStatus):
         t["top"] = ''
         t["unfreezReason"] = ''
         t["modifiedReason"] = ''
+        t["chapter"] = zhang_list[0]['chapter']
         new_zhang_list.append(t)
 
     return new_zhang_list

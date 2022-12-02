@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
 import re
-from material_data_process.get_result_data.kmp import get_all_entity_position,insert_label
+from kmp import get_all_entity_position,insert_label
+
 class Catalogue_data:
     def sort_files(self,path):
         file_names = []
@@ -34,8 +35,8 @@ class Catalogue_data:
         return section_list
 
 def get_position(content,section):
-    path = '..//material_data_process//get_result_data//data//目录数据//'
-    #path = './/data//目录数据//'
+    path = '/usr/local/webserver/zhishiku-python/es_search/material_data_process/get_result_data/data/catalog_data/'
+    path = '..//get_result_data//data//catalog_data//'
     get_catalogue = Catalogue_data()
     file_names = get_catalogue.sort_files(path)
     locations = get_catalogue.flies_location(path, file_names)
@@ -44,14 +45,7 @@ def get_position(content,section):
     position,position_substr=get_all_entity_position(section_list,content,section)
     return position,position_substr
 
-if __name__ == "__main__":
-    content = 'ss单体液压支柱是说明'
-    #sup_list = ['采煤设备', '错的', '对的', '无', '液压支架', '采煤作业']
-    section = '液压支架'
-    position,position_substr=get_position(content,section)
-    print(position)
-    s = insert_label(position,content)
-    print(s)
+
 
 
 
