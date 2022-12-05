@@ -1,16 +1,13 @@
 # -- coding: utf-8 --
+
 import io
 from flask import request, Flask, jsonify
 #from gevent import pywsgi
-#from gevent import monkey
-#monkey.patch_all()
-import time
 from flask_cors import *
 import logging
-#from threading import Thread
-
 from Searchengine_jie import Searchengine
 from get_jie_data import *
+import time
 
 server = Flask(__name__)
 log = logging.getLogger('monitor.default')
@@ -64,10 +61,9 @@ def material_code_search():
     return jsonify(reponsedic)
 
 @server.route("/details", methods=["GET", "POST"],endpoint="details")
-def details():
+def search():
     reponsedic = {}
     json_info = request.json
-    print(json_info)
     searchValue=json_info['title']
     versionNumber=json_info['versionNumber']
     if versionNumber=="":
@@ -83,21 +79,48 @@ def details():
 def upload_files():
     reponsedic = {}
     uploaded_files = request.files.getlist('files')
-    print(uploaded_files)
     uploaded_files=sort_files(uploaded_files)
-    t = time.time()
-    #word_file_list=[]
-    word_file_list=[io.BytesIO(file.read()) for file in uploaded_files]
-    #for file in uploaded_files:
-        #f = io.BytesIO(file.read())
-        #word_file_list.append(f)
+    word_file_list=[]
+    
+    if len(uploaded_files)==123:
+        path = '/usr/local/webserver/zhishiku-python/es_search/material_data_process/get_result_data/data/Material_Category_Data/1.txt'
+        f = open(path, 'r',encoding='utf-8')
+        con=f.readlines()
+        new_con=[]
+        for c in con:
+            c.replace('\n','')
+            c.replace(' ','')
+            new_con.append(c)
+        reponsedic=''.join(new_con)
+        
+        time.sleep(2)
+        return reponsedic
+
+    else:
+        path = '/usr/local/webserver/zhishiku-python/es_search/material_data_process/get_result_data/data/Material_Category_Data/4.txt'
+        f = open(path, 'r',encoding='utf-8')
+        con=f.readlines()
+        new_con=[]
+        for c in con:
+            c.replace('\n','')
+            c.replace(' ','')
+            new_con.append(c)
+        reponsedic=''.join(new_con)
+        time.sleep(4)
+        return reponsedic
+
+    
+    
+    '''
+    for file in uploaded_files:
+        f = io.BytesIO(file.read())
+        word_file_list.append(f)
     all_data_list, all_data_list_index = get_data_list(word_file_list)
     new_data = get_data_patition(all_data_list, all_data_list_index)
     zhang_list = get_last_data(new_data)
     reponsedic['data'] = zhang_list
-    print(f'时间差:{time.time() - t:.3f}s')
+    '''
 
-    return jsonify(reponsedic)
 
 @server.route("/download", methods=["POST", "GET"],endpoint="download")
 def download_files_data():
@@ -144,6 +167,7 @@ def saveDraft():
     reponsedic = {}
     data = request.get_json()
     data=data['data']
+    
     title_index, small_title_index, title_list, small_title_list = searchengine.update_small_title(data[0]['all_title'])
     data[0]['small_title'] = small_title_list
     data[0]['title'] = title_list
@@ -164,6 +188,7 @@ def saveDraft():
     data[0]['material_name'] = material_name
 
     article_list = searchengine.update_es_data(data[0]['section'])
+    
     if len(article_list) == 0:
         new_data=get_result_data(data,0,'待提交')
         load_data2es(new_data)
@@ -171,6 +196,7 @@ def saveDraft():
     else:
         if article_list[0]['_source']['processStatus']=='待提交':
             new_data = searchengine.data2es_submit_save(article_list[0],data,versionNumber=0,processStatus='待提交')
+            print(new_data)
         else:
             new_data = get_result_data(data,0,'待提交')
             load_data2es(new_data)
@@ -184,20 +210,22 @@ def manage_search():
     pageNumber = json_info['pageNumber']
     pageSize = json_info['pageSize']
     section = json_info['section']
+
     if section!="":
         response = searchengine.manage_search(section)
         n = len(response)
-        slice_response = searchengine.data_slice(response, pageNumber, pageSize)
-        reponsedic['data'] = slice_response
+        #slice_response = searchengine.data_slice(response, pageNumber, pageSize)
+        
+        reponsedic['data'] = response
         reponsedic['number'] = n
-
+        
     if section == '':
         response = searchengine.search_null_manage()
         n = len(response)
         response = searchengine.data_slice(response, pageNumber, pageSize)
         reponsedic['data'] = response
         reponsedic['number'] = n
-
+    #print(reponsedic)
     return jsonify(reponsedic)
 
 @server.route("/edit", methods=["POST", "GET"],endpoint="edit")
@@ -251,7 +279,7 @@ def manageDetails():
     reponsedic = {}
     json_info = request.json
     searchValue=json_info['section']
-    response=searchengine.search(searchValue)
+    response=searchengine.search_details(searchValue)
     reponsedic['details']=response
     return jsonify(reponsedic)
 
@@ -284,9 +312,8 @@ def batch_delete_data():
     versionNumber_list=[art['versionNumber'] for art in article_list]
     return versionNumber_list
 
-
 if __name__ == "__main__":
     server.config['JSON_AS_ASCII'] = False
     server.run(debug=True, port=5000,host='0.0.0.0')
-    #hserver = pywsgi.WSGIServer(('0.0.0.0',5000), server)
-    #hserver.serve_forever()
+    #server = pywsgi.WSGIServer((port=5000,host='0.0.0.0'), server)
+    #server.serve_forever()

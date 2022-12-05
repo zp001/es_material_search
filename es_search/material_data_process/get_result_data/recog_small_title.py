@@ -21,7 +21,7 @@ def rec_small_title(cont: list):
         index_list_s = []
         for c in cont:
             #if re.match(r'^\d+[\.]', c):
-            if re.match(r'^\d+[.]+[\u4e00-\u9fa5]',c):
+            if re.match(r'^\d+[\.]+[\u4e00-\u9fa5]',c):
                 k = cont.index(c)
                 index_list_s.append(k)
         return index_list_s

@@ -21,15 +21,18 @@ class Searchengine:
 
     def judge_search(self,keywords,query_sec,query_title,query_content):
         sec_list=Searchengine.title_search(self, query_sec)
+        sec_list = [d for d in sec_list if d['_source']['versionNumber'] != 0]
         if len(sec_list)==0:
             title_list = Searchengine.title_search(self, query_title)
             if len(title_list)==0:
                 content_list1 = Searchengine.title_search(self, query_content)
                 content_list = Searchengine.get_new_article_list(self, content_list1)
+                content_list = [d for d in content_list if d['versionNumber'] != 0]
                 content_list = Searchengine.filter_results(self, content_list)
                 return content_list
             else:
                 title_list = Searchengine.get_new_article_list(self, title_list)
+                title_list = [d for d in title_list if d['versionNumber'] != 0]
                 #dic_path='/usr/local/webserver/zhishiku-python/es_search/material_data_process/get_result_data/data/dict/word_dic.txt'
                 dic_path = '..//get_result_data//data//dict//word_dic.txt'
                 seg=jieba_seg(keywords,dic_path)
@@ -282,12 +285,12 @@ class Searchengine:
         }
 
         article_list1 = Searchengine.title_search(self, query)
-        article_list_null = Searchengine.manageSearch_data(self, article_list1)
+        article_list_null1 = Searchengine.manageSearch_data(self, article_list1)
 
         article_list2 = Searchengine.title_search(self, query_ver)
-        article_list_null2 = Searchengine.manageSearch_data(self, article_list2)
+        article_list_null = Searchengine.manageSearch_data(self, article_list2)
 
-        article_list_null.extend(article_list_null2)
+        article_list_null.extend(article_list_null1)
         n = len(article_list_null)
         for i in range(n):
             for j in range(1, n - i):

@@ -2,7 +2,7 @@
 
 import io
 from flask import request, Flask, jsonify
-#from gevent import pywsgi
+from gevent import pywsgi
 from flask_cors import *
 import logging
 from search.Searchengine_jie import Searchengine
@@ -278,7 +278,7 @@ def batch_delete_data():
     return versionNumber_list
 
 if __name__ == "__main__":
-    server.config['JSON_AS_ASCII'] = False
-    server.run(debug=True, port=5000,host='0.0.0.0')
-    #server = pywsgi.WSGIServer((port=5000,host='0.0.0.0'), server)
-    #server.serve_forever()
+    #server.config['JSON_AS_ASCII'] = False
+    #server.run(debug=True, port=5000,host='0.0.0.0')
+    server = pywsgi.WSGIServer((5000,'0.0.0.0'), server)
+    server.serve_forever()
